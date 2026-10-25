@@ -7,14 +7,14 @@ import { CATEGORIES, CATEGORY_MAP } from "@/lib/categories";
 import type { EventInput } from "@/lib/eventStore";
 import type { CalendarEvent, CategoryId } from "@/lib/types";
 
-const DEVLOG_TEMPLATE = `## 오늘 한 일
-- [ ]
+const DEVLOG_TEMPLATE = `## 해야 할 일
+- [ ] 
+
+## 오늘 한 일
+- [ ] 
 
 ## 이슈 / 해결
--
-
-## 내일 할 일
-- [ ]
+- 
 `;
 
 interface Props {
