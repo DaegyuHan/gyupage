@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import Nav from "@/components/Nav";
 import { themeInitScript } from "@/lib/theme";
@@ -14,6 +14,19 @@ const bricolage = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: "규페이지",
   description: "나만의 개인 맞춤 홈페이지",
+  // 아이폰 '홈 화면에 추가'로 앱처럼 열기
+  appleWebApp: { capable: true, title: "규페이지", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // 아이폰 노치·홈 바 영역까지 배경을 채우고, 내용은 safe-area 로 피함
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eef1f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1319" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen">
         <Nav />
-        <main className="mx-auto max-w-[1440px] px-5 pb-16 sm:px-8">{children}</main>
+        <main className="mx-auto max-w-[1440px] px-4 pb-32 sm:px-8 md:pb-16">{children}</main>
       </body>
     </html>
   );

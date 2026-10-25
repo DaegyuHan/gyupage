@@ -36,6 +36,7 @@
   --cat-project: #7446d6;
   --cat-appointment: #0e8a6b;
   --cat-personal: #d45a1f;
+  --cat-todo: #c2185b;
   --cat-on: #ffffff;
   color-scheme: light;
 }
@@ -56,6 +57,7 @@
   --cat-project: #b08cff;
   --cat-appointment: #3cc99a;
   --cat-personal: #ff9a5c;
+  --cat-todo: #f06aa0;
   --cat-on: #0d1220;
   color-scheme: dark;
 }
@@ -78,6 +80,7 @@
     --cat-project: #b08cff;
     --cat-appointment: #3cc99a;
     --cat-personal: #ff9a5c;
+  --cat-todo: #f06aa0;
     --cat-on: #0d1220;
     color-scheme: dark;
   }
@@ -207,5 +210,28 @@ body {
   }
   button:disabled {
     cursor: not-allowed;
+  }
+}
+
+/* ───────── 휴대폰(아이폰) ───────── */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 아이폰은 16px 보다 작은 입력칸을 누르면 화면을 확대해 버려서, 휴대폰에서는 16px 로 */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select,
+  .cm-content {
+    font-size: 16px !important;
+  }
+}
+
+/* 마우스가 없는 기기(터치)에서는 '올려야 보이는' 버튼을 항상 보이게 */
+@media (hover: none) {
+  .touch-visible {
+    opacity: 1 !important;
   }
 }

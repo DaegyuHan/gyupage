@@ -5,6 +5,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { todayKey } from "@/lib/date";
 import Link from "next/link";
 import LegacyImport from "@/components/LegacyImport";
+import SaveError from "@/components/SaveError";
 import { useEvents } from "@/lib/eventStore";
 import type { CalendarEvent, CategoryId } from "@/lib/types";
 import DayPanel from "./DayPanel";
@@ -90,6 +91,7 @@ export default function CalendarView() {
     <>
       <div className="mt-6">
         <LegacyImport onDone={store.reload} />
+      <SaveError message={store.error} />
       </div>
       <div className="mt-6 grid gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* 달력 */}
@@ -130,6 +132,21 @@ export default function CalendarView() {
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
+              {(() => {
+                const all = visible.size === CATEGORIES.length;
+                return (
+                  <button
+                    onClick={() => setVisible(all ? new Set() : new Set(CATEGORIES.map((c) => c.id)))}
+                    aria-pressed={all}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                      all ? "border-transparent bg-ink text-paper" : "border-line text-ink-3 hover:text-ink-2"
+                    }`}
+                    title={all ? "전부 끄기" : "전부 켜기"}
+                  >
+                    전체
+                  </button>
+                );
+              })()}
               {CATEGORIES.map((c) => {
                 const on = visible.has(c.id);
                 return (
@@ -180,8 +197,7 @@ export default function CalendarView() {
             onMemoChange={editor.updateMemo}
           />
           <section className="border-t border-line pt-4 text-xs text-ink-3">
-            <p>일정은 지금 이 브라우저에만 저장돼요.</p>
-            <div className="mt-2 flex gap-3">
+            <div className="flex gap-3">
               <button onClick={exportJson} className="font-medium text-ink-2 underline-offset-2 hover:underline">
                 백업 파일 내보내기
               </button>

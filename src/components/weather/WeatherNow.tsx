@@ -13,7 +13,7 @@ interface Props {
   onReset: () => void;
 }
 
-/** "고양 · 지금 20° 맑음" + 위치 바꾸기 */
+/** "수원 · 지금 20° 맑음" + 위치 바꾸기 */
 export default function WeatherNow({ data, failed, placeName, isMine, locating, onUseMyLocation, onReset }: Props) {
   return (
     <div className="flex items-center gap-1 rounded-full bg-sunken py-1 pl-2.5 pr-1 text-sm">
@@ -37,14 +37,14 @@ export default function WeatherNow({ data, failed, placeName, isMine, locating, 
         onClick={isMine ? onReset : onUseMyLocation}
         disabled={locating}
         className="ml-1 flex h-7 items-center gap-1 rounded-full px-2 text-xs font-medium text-ink-2 hover:bg-surface hover:text-ink disabled:opacity-60"
-        title={isMine ? "고양 날씨로 돌아가기" : "브라우저 위치로 날씨 보기"}
+        title={isMine ? "수원 날씨로 돌아가기" : "브라우저 위치로 날씨 보기"}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
           <circle cx="8" cy="8" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <circle cx="8" cy="8" r="1.6" fill="currentColor" />
           <path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        {locating ? "찾는 중" : isMine ? "고양으로" : "내 위치"}
+        {locating ? "찾는 중" : isMine ? "수원으로" : "내 위치"}
       </button>
     </div>
   );

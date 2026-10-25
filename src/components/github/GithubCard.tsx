@@ -102,6 +102,7 @@ export default function GithubCard() {
                   <span
                     key={d.date}
                     onMouseEnter={() => setHover(d)}
+                    onClick={() => setHover(d)}
                     title={`${formatKorean(d.date)} · ${d.count ? `기여 ${d.count}개` : "기여 없음"}`}
                     className={`relative flex h-[34px] w-[34px] items-start justify-start rounded-lg p-1 text-[9px] font-semibold leading-none tabular-nums transition hover:scale-110 ${
                       d.level >= 3 ? "text-white/85" : "text-ink-3"
@@ -122,7 +123,7 @@ export default function GithubCard() {
                     <b className="text-ink-2">{formatKorean(hover.date)}</b> · {hover.count ? `${hover.count}개` : "없음"}
                   </>
                 ) : (
-                  "칸에 마우스를 올려 보세요"
+                  "날짜 칸을 누르면 기여 수가 보여요"
                 )}
               </span>
               <span className="flex shrink-0 items-center gap-0.5">

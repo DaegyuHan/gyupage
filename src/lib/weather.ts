@@ -29,8 +29,8 @@ export interface WeatherResponse {
   hours: WeatherHour[];
 }
 
-/** 기본 위치: 고양 */
-export const DEFAULT_PLACE = { name: "고양", lat: 37.66, lon: 126.83 };
+/** 기본 위치: 수원 */
+export const DEFAULT_PLACE = { name: "수원", lat: 37.2636, lon: 127.0286 };
 
 const KST_HOUR = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",
@@ -97,7 +97,7 @@ async function load(lat: number, lon: number): Promise<Omit<WeatherResponse, "ho
   };
 }
 
-const loadCached = cached("weather-v2", 60 * 30, load);
+const loadCached = cached("weather-v3", 60 * 30, load);
 
 export async function getWeather(lat: number, lon: number): Promise<WeatherResponse> {
   const { allHours, ...rest } = await loadCached(lat, lon);

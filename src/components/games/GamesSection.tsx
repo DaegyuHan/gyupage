@@ -6,17 +6,17 @@ import MaplePanel from "./MaplePanel";
 import SteamPanel from "./SteamPanel";
 
 const TABS = [
-  { id: "maple", label: "메이플스토리", color: "#f68b1f" },
-  { id: "lol", label: "LoL", color: "#c89b3c" },
   { id: "steam", label: "Steam", color: "#1b9be0" },
+  { id: "lol", label: "LoL", color: "#c89b3c" },
+  { id: "maple", label: "메이플스토리", color: "#f68b1f" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
 const KEY = "gyupage.gamesTab";
 
-/** 홈: 게임 — 메이플스토리 / LoL / Steam 탭 */
+/** 홈: 게임 — Steam / LoL / 메이플스토리 탭 */
 export default function GamesSection() {
-  const [tab, setTab] = useState<TabId>("maple");
+  const [tab, setTab] = useState<TabId>("steam");
 
   useEffect(() => {
     try {
@@ -58,9 +58,9 @@ export default function GamesSection() {
       </div>
 
       <div className="rounded-2xl border border-line bg-surface p-5" role="tabpanel">
-        {tab === "maple" && <MaplePanel />}
-        {tab === "lol" && <LolPanel />}
         {tab === "steam" && <SteamPanel />}
+        {tab === "lol" && <LolPanel />}
+        {tab === "maple" && <MaplePanel />}
       </div>
     </section>
   );

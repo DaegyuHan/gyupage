@@ -130,7 +130,7 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                         e.stopPropagation();
                         onAdd(key);
                       }}
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-ink-3 opacity-0 transition-opacity hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-ink-3 touch-visible opacity-0 transition-opacity hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
                       aria-label={`${d.getMonth() + 1}월 ${d.getDate()}일에 일정 추가`}
                     >
                       <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
@@ -157,7 +157,7 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                         >
                           <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: c.color }} />
                           {ev.time && <span className="shrink-0 tabular-nums text-ink-3">{ev.time}</span>}
-                          <span className="truncate">{ev.title}</span>
+                          <span className={`truncate ${ev.done ? "line-through opacity-60" : ""}`}>{ev.title}</span>
                         </button>
                       );
                     })}

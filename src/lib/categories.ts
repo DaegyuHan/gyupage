@@ -17,6 +17,7 @@ export const CATEGORIES: Category[] = [
   { id: "project", label: "프로젝트", color: "var(--cat-project)", soft: soft("var(--cat-project)") },
   { id: "appointment", label: "약속", color: "var(--cat-appointment)", soft: soft("var(--cat-appointment)") },
   { id: "personal", label: "개인", color: "var(--cat-personal)", soft: soft("var(--cat-personal)") },
+  { id: "todo", label: "할일", color: "var(--cat-todo)", soft: soft("var(--cat-todo)") },
 ];
 
 export const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.id, c])) as Record<

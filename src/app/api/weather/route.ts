@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_PLACE, getWeather } from "@/lib/weather";
 
-/** GET /api/weather?lat=37.66&lon=126.83 (없으면 고양) */
+/** GET /api/weather?lat=37.66&lon=126.83 (없으면 수원) */
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
   const num = (v: string | null, min: number, max: number) => {

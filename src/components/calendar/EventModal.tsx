@@ -45,6 +45,7 @@ export default function EventModal({
   const [end, setEnd] = useState(defaultDate);
   const [time, setTime] = useState("");
   const [memo, setMemo] = useState("");
+  const [done, setDone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function EventModal({
     setStart(editing?.start ?? defaultDate);
     setEnd(editing?.end ?? defaultDate);
     setTime(editing?.time ?? "");
+    setDone(!!editing?.done);
     setMemo(editing?.memo ?? (!editing && defaultCategory === "devlog" ? DEVLOG_TEMPLATE : ""));
     setConfirmDelete(false);
   }, [open, editing, defaultDate, defaultCategory]);
@@ -79,6 +81,11 @@ export default function EventModal({
     e.preventDefault();
     const finalTitle = title.trim() || (category === "devlog" ? "개발일지" : "");
     if (!finalTitle) return;
+    if (category === "todo") {
+      // 할일은 하루짜리 한 줄 (홈 '오늘 꼭 할 일'과 같은 데이터)
+      onSave({ title: finalTitle.slice(0, 80), category, start, end: start, done });
+      return;
+    }
     onSave({
       title: finalTitle,
       category,
@@ -138,11 +145,29 @@ export default function EventModal({
             autoFocus={!editing}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={category === "devlog" ? "개발일지" : category === "project" ? "프로젝트 이름" : "제목"}
+            placeholder={category === "devlog" ? "개발일지" : category === "project" ? "프로젝트 이름" : category === "todo" ? "할 일" : "제목"}
             className="w-full bg-transparent text-[28px] font-extrabold tracking-tight outline-none placeholder:text-ink-3/70"
             aria-label="제목"
           />
 
+          {category === "todo" ? (
+            <>
+              <dl className="mt-4 grid grid-cols-[64px_1fr] items-center gap-y-1 text-sm">
+                <dt className="text-ink-2">날짜</dt>
+                <dd className="-ml-2.5">
+                  <DateRangeField start={start} end={start} onChange={(s) => setStart(s)} />
+                </dd>
+              </dl>
+              <label className="mt-4 flex cursor-pointer items-center gap-2.5 text-sm font-medium">
+                <input type="checkbox" checked={done} onChange={(e) => setDone(e.target.checked)} className="h-[18px] w-[18px] accent-[var(--cat-todo)]" />
+                다 했어요
+              </label>
+              <p className="mt-6 rounded-xl bg-sunken/60 px-4 py-3 text-xs leading-relaxed text-ink-2">
+                할일은 홈의 &lsquo;오늘 꼭 할 일&rsquo;과 같은 목록이에요. 여기서 추가하면 그날 홈에도 나오고, 홈에서 적은 할 일도 여기에 보여요.
+              </p>
+            </>
+          ) : (
+            <>
           <dl className="mt-4 grid grid-cols-[64px_1fr] items-center gap-y-1 text-sm">
             <dt className="text-ink-2">날짜</dt>
             <dd className="-ml-2.5">
@@ -170,6 +195,8 @@ export default function EventModal({
               placeholder="## 제목, - [ ] 할 일, **굵게** 처럼 마크다운으로 적어요"
             />
           </div>
+            </>
+          )}
         </div>
 
         {/* 하단 바 */}

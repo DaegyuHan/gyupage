@@ -54,6 +54,9 @@ export async function api<T>(url: string, init?: { method?: string; body?: unkno
     cache: "no-store",
   });
   if (res.status === 401) refreshAuth();
-  if (!res.ok) throw new Error(`${url} ${res.status}`);
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
+    throw new Error(j.detail || j.error || `${url} ${res.status}`);
+  }
   return (await res.json()) as T;
 }

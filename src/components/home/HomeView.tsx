@@ -9,9 +9,11 @@ import NewsPlaceholder from "@/components/NewsPlaceholder";
 import CsCard from "@/components/cs/CsCard";
 import GithubCard from "@/components/github/GithubCard";
 import GamesSection from "@/components/games/GamesSection";
+import ReadingSection from "@/components/books/ReadingSection";
 import MyTeamCard from "@/components/myteam/MyTeamCard";
 import { useRouter } from "next/navigation";
 import LegacyImport from "@/components/LegacyImport";
+import SaveError from "@/components/SaveError";
 import { todayKey } from "@/lib/date";
 import { useEvents } from "@/lib/eventStore";
 import HourlyWeather from "@/components/weather/HourlyWeather";
@@ -29,6 +31,9 @@ export default function HomeView() {
   const matches = useHomeMatches();
   const router = useRouter();
 
+  // 할일은 홈에서는 '오늘 꼭 할 일'로 따로 보여줘서 일정 목록에서는 뺌
+  const events = store.events.filter((e) => e.category !== "todo");
+
   // 서버(UTC)와 브라우저(KST)의 '오늘'이 달라질 수 있어 클라이언트에서만 그림
   if (!store.loaded) return <div className="h-[70vh]" aria-busy="true" />;
 
@@ -37,14 +42,15 @@ export default function HomeView() {
   return (
     <>
       <LegacyImport onDone={store.reload} />
-      <TodayHero events={store.events} onOpen={editor.openEdit}>
+      <SaveError message={store.error} />
+      <TodayHero events={events} onOpen={editor.openEdit}>
         <TodayTodos />
       </TodayHero>
 
       <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-12">
           <WeekBoard
-            events={store.events}
+            events={events}
             start={today}
             onAdd={(k) => (store.authed ? editor.openNew(k) : router.push("/login?next=/"))}
             onOpen={editor.openEdit}
@@ -55,7 +61,7 @@ export default function HomeView() {
                 data={weather.data}
                 failed={weather.failed}
                 placeName={weather.placeName}
-                isMine={!!weather.place}
+                isMine={weather.isHere}
                 locating={weather.locating}
                 onUseMyLocation={weather.useMyLocation}
                 onReset={weather.resetPlace}
@@ -67,6 +73,7 @@ export default function HomeView() {
           <CsCard />
           <GithubCard />
           <GamesSection />
+          <ReadingSection />
         </div>
         <aside className="space-y-10">
           <MyTeamCard />

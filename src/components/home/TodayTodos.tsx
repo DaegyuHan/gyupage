@@ -135,7 +135,7 @@ export default function TodayTodos() {
               <button
                 onClick={() => removeItem(t)}
                 aria-label="지우기"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink-3 touch-visible opacity-0 transition hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
               >
                 <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                   <path d="M3 3l6 6M9 3l-6 6" strokeLinecap="round" />

@@ -9,14 +9,21 @@ export interface TodoRow {
   done: boolean;
 }
 
-const MAX = 6;
+/** 하루 최대 (홈 화면은 6개까지만 받지만 캘린더에서 더 넣을 수 있게 넉넉히) */
+const MAX = 30;
 
 /** ?day=YYYY-MM-DD (여러 날은 ?day=…&day=…) */
 export async function GET(req: Request) {
   return guarded(async () => {
-    const days = new URL(req.url).searchParams.getAll("day").filter(isDay).slice(0, 7);
-    if (!days.length) return NextResponse.json({ todos: [] });
+    const params = new URL(req.url).searchParams;
     const sql = await db();
+    // 캘린더용: 전부 (할일은 많지 않아서 한 번에)
+    if (params.get("all") === "1") {
+      const rows = (await sql`SELECT id, day, text, done FROM todos ORDER BY day, position, created_at`) as TodoRow[];
+      return NextResponse.json({ todos: rows });
+    }
+    const days = params.getAll("day").filter(isDay).slice(0, 7);
+    if (!days.length) return NextResponse.json({ todos: [] });
     const rows = (await sql`SELECT id, day, text, done FROM todos WHERE day = ANY(${days}) ORDER BY day, position, created_at`) as TodoRow[];
     return NextResponse.json({ todos: rows });
   });

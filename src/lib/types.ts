@@ -1,4 +1,4 @@
-export type CategoryId = "devlog" | "project" | "appointment" | "personal";
+export type CategoryId = "devlog" | "project" | "appointment" | "personal" | "todo";
 
 export interface CalendarEvent {
   id: string;
@@ -12,6 +12,8 @@ export interface CalendarEvent {
   time?: string;
   /** 개발일지 본문이나 메모 */
   memo?: string;
+  /** 할일: 다 했는지 (홈 '오늘 꼭 할 일'과 같은 데이터) */
+  done?: boolean;
   createdAt: number;
   updatedAt: number;
 }

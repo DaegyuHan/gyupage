@@ -35,6 +35,27 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     created_at bigint NOT NULL
   )`;
   await sql`CREATE INDEX IF NOT EXISTS todos_day ON todos (day)`;
+  await sql`CREATE TABLE IF NOT EXISTS books (
+    id text PRIMARY KEY,
+    title text NOT NULL,
+    cover text,
+    total_pages int NOT NULL,
+    current_page int NOT NULL DEFAULT 0,
+    status text NOT NULL DEFAULT 'reading',
+    started_at bigint,
+    finished_at bigint,
+    created_at bigint NOT NULL,
+    updated_at bigint NOT NULL
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS reading_logs (
+    id text PRIMARY KEY,
+    book_id text NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    day text NOT NULL,
+    from_page int NOT NULL,
+    to_page int NOT NULL,
+    created_at bigint NOT NULL
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS reading_logs_day ON reading_logs (day)`;
   await sql`CREATE TABLE IF NOT EXISTS prefs (
     key text PRIMARY KEY,
     value jsonb NOT NULL,
@@ -44,7 +65,8 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
 
 /** 표가 준비된 sql 함수 */
 export async function db() {
-  const url = process.env.DATABASE_URL;
+  // Vercel 화면에 따옴표째 붙여 넣은 경우도 받아 줌
+  const url = process.env.DATABASE_URL?.trim().replace(/^["']|["']$/g, "");
   if (!url) throw new NoDatabaseError("DATABASE_URL 이 없어요");
   client ??= neon(url);
   ready ??= ensureSchema(client).catch((e) => {

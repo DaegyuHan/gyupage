@@ -144,7 +144,7 @@ export default function WeekBoard({ events, start, onAdd, onOpen, weather, heade
 
   return (
     <section>
-      <div className="mb-4 flex items-end justify-between gap-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight">일정</h2>
           <p className="mt-0.5 text-sm text-ink-2">
@@ -152,7 +152,7 @@ export default function WeekBoard({ events, start, onAdd, onOpen, weather, heade
             {total > 0 ? `, 일정 ${total}개` : ", 아직 잡힌 일정이 없어요"}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
           {headerExtra}
           <Link href="/calendar" className="rounded-full border border-line px-3.5 py-1.5 text-sm font-medium text-ink-2 hover:border-ink-3 hover:text-ink">
             캘린더 열기
@@ -182,7 +182,7 @@ export default function WeekBoard({ events, start, onAdd, onOpen, weather, heade
                   </div>
                   <button
                     onClick={() => onAdd(key)}
-                    className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-ink-3 opacity-0 transition-opacity hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+                    className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-ink-3 touch-visible opacity-0 transition-opacity hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
                     aria-label={`${d.getMonth() + 1}월 ${d.getDate()}일에 일정 추가`}
                   >
                     <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>

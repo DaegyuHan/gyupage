@@ -28,7 +28,7 @@ function safeEqual(a: string, b: string) {
 }
 
 export function checkPassword(input: string) {
-  const pw = process.env.APP_PASSWORD;
+  const pw = process.env.APP_PASSWORD?.trim().replace(/^["']|["']$/g, "");
   if (!pw) return false;
   // 길이 차이로 새는 정보를 막으려고 해시끼리 비교
   return safeEqual(sign(`pw:${input}`), sign(`pw:${pw}`));

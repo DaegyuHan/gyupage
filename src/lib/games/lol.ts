@@ -141,7 +141,7 @@ async function load(riotId: string): Promise<LolSummary> {
 const loadCached = cached("lol-v2", 60 * 20, load);
 
 export function getLol() {
-  const id = process.env.RIOT_ID;
+  const id = process.env.RIOT_ID?.trim().replace(/^["']|["']$/g, "");
   if (!process.env.RIOT_API_KEY || !id) throw new LolSetupError("SETUP");
   return loadCached(id);
 }

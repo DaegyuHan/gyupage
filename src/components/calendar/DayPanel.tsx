@@ -79,7 +79,7 @@ export default function DayPanel({ dateKey, events, onAdd, onEventClick, onMemoC
                       </span>
                     )}
                   </div>
-                  <div className="mt-1.5 text-[15px] font-semibold leading-snug">{ev.title}</div>
+                  <div className={`mt-1.5 text-[15px] font-semibold leading-snug ${ev.done ? "text-ink-3 line-through" : ""}`}>{ev.done && "✓ "}{ev.title}</div>
                   {ev.memo && (
                     <MarkdownView
                       source={ev.memo}
