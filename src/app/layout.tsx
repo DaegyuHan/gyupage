@@ -14,8 +14,11 @@ const bricolage = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: "규페이지",
   description: "나만의 개인 맞춤 홈페이지",
-  // 아이폰 '홈 화면에 추가'로 앱처럼 열기
+  // 아이폰 '홈 화면에 추가'로 앱처럼 열기 (주소창 없이 전체 화면)
   appleWebApp: { capable: true, title: "규페이지", statusBarStyle: "default" },
+  applicationName: "규페이지",
+  formatDetection: { telephone: false, date: false, address: false, email: false },
+  other: { "mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
