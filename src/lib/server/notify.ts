@@ -12,6 +12,7 @@ import { COLOR, hasDiscord, once, sendDiscord, type Embed } from "./discord";
 import { kstDay, labelOf, mfetch, SOURCES } from "./monitor";
 import { countSubs, hasPush, sendPush, type PushPayload } from "./push";
 import { DEFAULT_PREFS, type PushPrefs } from "@/lib/pushKinds";
+import { AF_SAVER } from "@/lib/football/apiFootball";
 
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 const DAY = 86400_000;
@@ -197,6 +198,7 @@ export async function dailyReport(): Promise<Embed> {
     usage = (await sql`SELECT source, calls, errors, last_error, remaining, quota FROM api_usage WHERE day = ${yesterday} ORDER BY calls DESC`) as typeof usage;
     // 오래된 기록 정리 (60일)
     await sql`DELETE FROM api_usage WHERE day < ${kstDay(Date.now() - 60 * DAY)}`;
+    await sql`DELETE FROM api_usage_hourly WHERE hour < ${kstDay(Date.now() - 14 * DAY)}`;
     await sql`DELETE FROM notify_log WHERE at < ${Date.now() - 30 * DAY}`;
   } catch (e) {
     dbOk = false;
@@ -226,7 +228,7 @@ export async function dailyReport(): Promise<Embed> {
   const live: string[] = [];
   try {
     const af = await apiFootballStatus();
-    if (af) live.push(`⚽ **API-Football** ${af}`);
+    if (af) live.push(`⚽ **API-Football** ${af} · 절약 모드 ${AF_SAVER ? "켜짐" : "꺼짐(as-is 측정 중)"}`);
   } catch (e) {
     live.push(`⚽ **API-Football** 확인 실패: ${String(e).slice(0, 80)}`);
   }

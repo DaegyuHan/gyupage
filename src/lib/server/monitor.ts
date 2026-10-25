@@ -73,6 +73,8 @@ const pending = new Map<string, Stat>();
 let scheduled = false;
 
 export const kstDay = (t = Date.now()) => new Date(t + 9 * 3600_000).toISOString().slice(0, 10);
+/** KST "YYYY-MM-DD HH" */
+export const kstHour = (t = Date.now()) => new Date(t + 9 * 3600_000).toISOString().slice(0, 13).replace("T", " ");
 
 function record(source: string, patch: Partial<Stat> & { ok: boolean }) {
   const s = pending.get(source) ?? { calls: 0, errors: 0 };
@@ -131,6 +133,12 @@ async function flush() {
         quota = COALESCE(EXCLUDED.quota, api_usage.quota),
         updated_at = EXCLUDED.updated_at
       RETURNING errors`) as { errors: number }[];
+    await sql`INSERT INTO api_usage_hourly (hour, source, calls, errors, remaining)
+      VALUES (${kstHour(now)}, ${source}, ${s.calls}, ${s.errors}, ${s.remaining ?? null})
+      ON CONFLICT (hour, source) DO UPDATE SET
+        calls = api_usage_hourly.calls + EXCLUDED.calls,
+        errors = api_usage_hourly.errors + EXCLUDED.errors,
+        remaining = COALESCE(EXCLUDED.remaining, api_usage_hourly.remaining)`;
     if (s.alert) alerts.push([source, s, rows[0]?.errors ?? s.errors]);
 
     // 한도가 얼마 안 남았을 때 (하루 한 번)

@@ -416,7 +416,7 @@ const fixtureDone = cached("fx-done-v2", TTL.finishedDetail, rawFixture);
 const fixtureSoon = cached("fx-soon-v2", TTL.upcomingDetail, rawFixture);
 
 async function rawInjuries(fixtureId: number, homeId: number): Promise<{ home: Absence[]; away: Absence[] }> {
-  const rows = await afGet<AFInjury>("injuries", { fixture: fixtureId });
+  const rows = await afGet<AFInjury>("injuries", { fixture: fixtureId }, { optional: true });
   const out = { home: [] as Absence[], away: [] as Absence[] };
   const seen = new Set<number>();
   for (const r of rows) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/auth-client";
+import UsageChart from "./UsageChart";
 
 interface Usage {
   source: string;
@@ -18,6 +19,7 @@ interface Data {
   push: boolean;
   cron: boolean;
   cronLast: number | null;
+  afSaver?: boolean;
   usage: Usage[];
 }
 
@@ -61,6 +63,7 @@ export default function MonitorSettings() {
     ? [
         { label: "디스코드", ok: data.discord, text: data.discord ? "연결됨" : "DISCORD_WEBHOOK_URL 없음" },
         { label: "푸시", ok: data.push, text: data.push ? "준비됨" : "VAPID 키 없음" },
+        { label: "축구 절약", ok: data.afSaver !== false, text: data.afSaver === false ? "꺼짐 · 예전 방식으로 측정 중 (AF_SAVER=off)" : "켜짐" },
         {
           label: "5분 작업",
           ok: !!cronOk,
@@ -133,6 +136,8 @@ export default function MonitorSettings() {
           )}
         </div>
       </div>
+
+      <UsageChart />
     </section>
   );
 }

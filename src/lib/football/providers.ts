@@ -1,5 +1,5 @@
 import { addDays, kstDate } from "./kst";
-import { afGet, cached, TTL } from "./apiFootball";
+import { AF_SAVER, afGet, cached, TTL } from "./apiFootball";
 import { API_FOOTBALL_LEAGUES, FOOTBALL_DATA_CODES, teamName } from "./leagues";
 import type { Match, MatchStatus } from "./types";
 import { mfetch } from "@/lib/server/monitor";
@@ -94,12 +94,13 @@ async function loadDay(date: string): Promise<Match[]> {
 }
 
 // 캐시 이름 끝의 v2: 팀 이름 변환을 고쳐서 예전에 저장된 결과를 버리기 위함
-const loadToday = cached("day-v2", TTL.todayFixtures, loadDay);
-const loadPast = cached("day-past-v2", TTL.pastFixtures, loadDay);
+// 모드마다 캐시 이름을 달리 해서, 스위치를 바꾸면 바로 그 방식의 캐시 시간으로 동작
+const loadToday = cached(AF_SAVER ? "day-v3" : "day-v2-asis", TTL.todayFixtures, loadDay);
 
-/** 아직 안 끝난 경기가 있는지 (자정을 넘겨 진행 중인 유럽 경기 등) */
+/** 아직 안 끝난 경기가 있는지 (예전 방식에서만 씀) */
 const unsettled = (list: Match[]) =>
   list.some((m) => m.status === "live" || (m.status === "scheduled" && Date.parse(m.kickoff) < Date.now()));
+const loadPast = cached("day-past-v2", TTL.pastFixtures, loadDay);
 
 /* ───────── K리그 실시간 보정: 네이버 스포츠 (키·호출 한도 없음, 1분 캐시) ─────────
  * API-Football 은 무료 한도(하루 100회) 때문에 30분 캐시 + 한도가 차면 예전 값이 그대로 남아
@@ -167,6 +168,94 @@ async function overlayKLeague(list: Match[], from: string, to: string): Promise<
   });
 }
 
+/* ───────── 해외 실시간 보정: ESPN 스코어보드 (키·호출 한도 없음, 90초 캐시) ─────────
+ * API-Football 경기 목록은 '어떤 경기가 몇 시에 있는지'만 알면 되니까 3시간에 한 번만 받고,
+ * 진행 중 점수·분·종료 여부는 ESPN 으로 덮어써요. → API-Football 하루 사용량이 크게 줄어요.
+ */
+const ESPN_SLUG: Partial<Record<Match["league"], string>> = { PL: "eng.1", PD: "esp.1", BL1: "ger.1", CL: "uefa.champions" };
+
+interface EspnEvent {
+  date: string;
+  competitions?: {
+    competitors: { homeAway: "home" | "away"; score?: string; team: { displayName?: string; shortDisplayName?: string; name?: string; location?: string } }[];
+    status?: { displayClock?: string; type?: { state?: "pre" | "in" | "post"; completed?: boolean; name?: string } };
+  }[];
+}
+
+const espnBoard = cached("espn-board-v1", 90, async (slug: string, from: string, to: string): Promise<EspnEvent[]> => {
+  const d = (k: string) => k.replaceAll("-", "");
+  const res = await mfetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${d(from)}-${d(to)}&limit=200`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return ((await res.json()) as { events?: EspnEvent[] }).events ?? [];
+});
+
+const STOP = new Set(["fc", "cf", "afc", "sc", "ac", "as", "ssc", "club", "de", "the", "1", "real"]);
+/** "Bayern München" / "Bayern Munich" → {bayern, munchen} / {bayern, munich} */
+function tokens(...names: (string | undefined)[]) {
+  const out = new Set<string>();
+  for (const n of names) {
+    if (!n) continue;
+    n.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 1 && !STOP.has(t))
+      .forEach((t) => out.add(t));
+  }
+  return out;
+}
+const overlap = (a: Set<string>, b: Set<string>) => [...a].filter((t) => b.has(t)).length;
+
+async function overlayOverseas(list: Match[], from: string, to: string): Promise<Match[]> {
+  const leagues = [...new Set(list.map((m) => m.league))].filter((l) => ESPN_SLUG[l]);
+  if (!leagues.length) return list;
+  // KST 하루가 미국 시간으로는 이틀에 걸쳐서 앞뒤로 하루씩 넉넉히
+  const boards = new Map(
+    await Promise.all(leagues.map(async (l) => [l, await espnBoard(ESPN_SLUG[l]!, addDays(from, -1), addDays(to, 1)).catch(() => [] as EspnEvent[])] as const)),
+  );
+  return list.map((m) => {
+    const events = boards.get(m.league);
+    if (!events?.length) return m;
+    const kick = Date.parse(m.kickoff);
+    const th = tokens(m.home.name);
+    const ta = tokens(m.away.name);
+    let best: { e: EspnEvent; score: number } | null = null;
+    for (const e of events) {
+      if (Math.abs(Date.parse(e.date) - kick) > 20 * 60_000) continue;
+      const c = e.competitions?.[0]?.competitors ?? [];
+      const h = c.find((x) => x.homeAway === "home")?.team;
+      const a = c.find((x) => x.homeAway === "away")?.team;
+      const score = overlap(th, tokens(h?.displayName, h?.shortDisplayName, h?.name, h?.location)) + overlap(ta, tokens(a?.displayName, a?.shortDisplayName, a?.name, a?.location));
+      if (score > 0 && (!best || score > best.score)) best = { e, score };
+    }
+    if (!best) return m;
+    const comp = best.e.competitions![0];
+    const st = comp.status?.type;
+    const name = st?.name ?? "";
+    const status: Match["status"] = /POSTPONED|CANCELED|SUSPENDED|ABANDONED/.test(name)
+      ? "postponed"
+      : st?.state === "post" || st?.completed
+        ? "finished"
+        : st?.state === "in"
+          ? "live"
+          : "scheduled";
+    if (status === "scheduled") return m.status === "live" ? m : { ...m, status };
+    const num = (side: "home" | "away") => {
+      const v = comp.competitors.find((x) => x.homeAway === side)?.score;
+      return v != null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null;
+    };
+    const clock = comp.status?.displayClock?.match(/(\d+)/);
+    return {
+      ...m,
+      status,
+      minute: status === "live" ? (clock ? Number(clock[1]) : m.minute) : undefined,
+      home: { ...m.home, score: num("home") ?? m.home.score },
+      away: { ...m.away, score: num("away") ?? m.away.score },
+    };
+  });
+}
+
 /** 마지막 안전장치: 킥오프 4시간이 지났는데도 '진행 중'이면 끝난 것으로 봄 (값이 멈춘 경우) */
 function settleStale(list: Match[]): Match[] {
   const limit = Date.now() - 4 * 3600_000;
@@ -175,9 +264,14 @@ function settleStale(list: Match[]): Match[] {
 
 export async function fetchApiFootball(yesterday: string, today: string): Promise<Match[]> {
   let [a, b] = await Promise.all([loadPast(yesterday), loadToday(today)]);
-  // 어제 목록에 진행 중이던 경기가 남아 있으면 '오늘'처럼 30분 캐시로 다시 받음
-  if (unsettled(a)) a = await loadToday(yesterday);
-  const merged = await overlayKLeague([...a, ...b], yesterday, today);
+  if (!AF_SAVER) {
+    // 예전 방식: 어제 목록에 진행 중이던 경기가 남아 있으면 '오늘'처럼 30분 캐시로 다시 받음
+    if (unsettled(a)) a = await loadToday(yesterday);
+    return settleStale(await overlayKLeague([...a, ...b], yesterday, today));
+  }
+  // 진행 중 점수는 API-Football 을 다시 부르지 않고 무료 소스로 덮어씀 (K리그: 네이버, 해외: ESPN)
+  const k = await overlayKLeague([...a, ...b], yesterday, today);
+  const merged = await overlayOverseas(k, yesterday, today).catch(() => k);
   return settleStale(merged);
 }
 

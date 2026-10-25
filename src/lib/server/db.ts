@@ -23,6 +23,7 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     AND to_regclass('public.reading_logs') IS NOT NULL
     AND to_regclass('public.history_docs') IS NOT NULL
     AND to_regclass('public.api_usage') IS NOT NULL
+    AND to_regclass('public.api_usage_hourly') IS NOT NULL
     AND to_regclass('public.notify_log') IS NOT NULL
     AND to_regclass('public.push_subs') IS NOT NULL
     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'kind') AS ok`) as { ok: boolean }[];
@@ -93,6 +94,15 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     quota int,
     updated_at bigint NOT NULL,
     PRIMARY KEY (day, source)
+  )`;
+  // 시간대별 호출 수 (그래프용, KST "YYYY-MM-DD HH")
+  await sql`CREATE TABLE IF NOT EXISTS api_usage_hourly (
+    hour text NOT NULL,
+    source text NOT NULL,
+    calls int NOT NULL DEFAULT 0,
+    errors int NOT NULL DEFAULT 0,
+    remaining int,
+    PRIMARY KEY (hour, source)
   )`;
   // 같은 알림을 여러 번 보내지 않도록 (키 → 마지막으로 보낸 시각)
   await sql`CREATE TABLE IF NOT EXISTS notify_log (

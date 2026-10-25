@@ -5,6 +5,7 @@ import { COLOR, hasDiscord, sendDiscord } from "@/lib/server/discord";
 import { kstDay, labelOf } from "@/lib/server/monitor";
 import { dailyReport } from "@/lib/server/notify";
 import { hasPush } from "@/lib/server/push";
+import { AF_SAVER } from "@/lib/football/apiFootball";
 
 /** 설정 화면: 오늘 API 사용량 + 연결 상태 */
 export async function GET() {
@@ -18,6 +19,7 @@ export async function GET() {
         discord: hasDiscord(),
         push: hasPush(),
         cron: !!process.env.CRON_SECRET?.trim(),
+        afSaver: AF_SAVER,
         cronLast: cron ? Number(cron.at) : null,
         usage: rows.map((r) => ({
           source: String(r.source),
