@@ -100,11 +100,84 @@ const loadPast = cached("day-past-v2", TTL.pastFixtures, loadDay);
 const unsettled = (list: Match[]) =>
   list.some((m) => m.status === "live" || (m.status === "scheduled" && Date.parse(m.kickoff) < Date.now()));
 
+/* ───────── K리그 실시간 보정: 네이버 스포츠 (키·호출 한도 없음, 1분 캐시) ─────────
+ * API-Football 은 무료 한도(하루 100회) 때문에 30분 캐시 + 한도가 차면 예전 값이 그대로 남아
+ * '45분'처럼 멈춰 보일 수 있어요. K리그는 네이버 일정의 점수·상태로 덮어써요.
+ */
+interface NaverGame {
+  gameDate: string; // YYYY-MM-DD (KST)
+  homeTeamName: string;
+  awayTeamName: string;
+  homeTeamScore: number;
+  awayTeamScore: number;
+  statusCode: string; // BEFORE | STARTED | RESULT ...
+  statusInfo?: string; // "후반 23분" 등
+  cancel?: boolean;
+}
+
+/** 팀 이름 맞추기: 우리 표기(수원 삼성) ↔ 네이버 표기(수원) */
+function normK(name: string) {
+  const n = name.replace(/\s+/g, "");
+  const alias: Record<string, string> = { 수원삼성: "수원", 울산HD: "울산", FC서울: "서울", 서울이랜드: "서울E", 김천상무: "김천" };
+  return alias[n] ?? n;
+}
+
+const naverK = cached("naver-k-v1", 60, async (from: string, to: string): Promise<NaverGame[]> => {
+  const lists = await Promise.all(
+    ["kleague", "kleague2"].map(async (cat) => {
+      const res = await fetch(
+        `https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=${cat}&fromDate=${from}&toDate=${to}&size=200`,
+        { headers: { Referer: "https://m.sports.naver.com/" }, cache: "no-store" },
+      );
+      if (!res.ok) return [] as NaverGame[];
+      return ((await res.json()) as { result?: { games?: NaverGame[] } }).result?.games ?? [];
+    }),
+  );
+  return lists.flat();
+});
+
+function minuteFrom(info?: string) {
+  const m = info?.match(/(\d+)/);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  return /후반/.test(info!) && n <= 45 ? n + 45 : n;
+}
+
+async function overlayKLeague(list: Match[], from: string, to: string): Promise<Match[]> {
+  if (!list.some((m) => m.league === "K1" || m.league === "K2")) return list;
+  const games = await naverK(from, to).catch(() => [] as NaverGame[]);
+  if (!games.length) return list;
+  return list.map((m) => {
+    if (m.league !== "K1" && m.league !== "K2") return m;
+    const day = kstDate(m.kickoff);
+    const g = games.find(
+      (x) => x.gameDate === day && (normK(x.homeTeamName) === normK(m.home.name) || normK(x.awayTeamName) === normK(m.away.name)),
+    );
+    if (!g) return m;
+    const status: Match["status"] = g.cancel ? "postponed" : g.statusCode === "RESULT" ? "finished" : g.statusCode === "BEFORE" ? "scheduled" : "live";
+    const scored = status !== "scheduled";
+    return {
+      ...m,
+      status,
+      minute: status === "live" ? (minuteFrom(g.statusInfo) ?? m.minute) : undefined,
+      home: { ...m.home, score: scored ? g.homeTeamScore : null },
+      away: { ...m.away, score: scored ? g.awayTeamScore : null },
+    };
+  });
+}
+
+/** 마지막 안전장치: 킥오프 4시간이 지났는데도 '진행 중'이면 끝난 것으로 봄 (값이 멈춘 경우) */
+function settleStale(list: Match[]): Match[] {
+  const limit = Date.now() - 4 * 3600_000;
+  return list.map((m) => (m.status === "live" && Date.parse(m.kickoff) < limit ? { ...m, status: "finished", minute: undefined } : m));
+}
+
 export async function fetchApiFootball(yesterday: string, today: string): Promise<Match[]> {
   let [a, b] = await Promise.all([loadPast(yesterday), loadToday(today)]);
   // 어제 목록에 진행 중이던 경기가 남아 있으면 '오늘'처럼 30분 캐시로 다시 받음
   if (unsettled(a)) a = await loadToday(yesterday);
-  return [...a, ...b];
+  const merged = await overlayKLeague([...a, ...b], yesterday, today);
+  return settleStale(merged);
 }
 
 /** KST 날짜로 어제/오늘 나누기 */

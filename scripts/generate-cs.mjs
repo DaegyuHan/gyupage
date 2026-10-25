@@ -15,13 +15,15 @@ const MODEL = process.env.CS_MODEL || "claude-sonnet-5-5";
 const DIR = path.join(process.cwd(), "content", "cs");
 
 const CATEGORIES = {
-  os: "운영체제",
-  network: "네트워크",
-  db: "데이터베이스",
-  ds: "자료구조·알고리즘",
-  web: "웹",
-  security: "보안",
-  arch: "설계·아키텍처",
+  java: "Java·JVM (언어 특성, 컬렉션, 동시성, GC, JVM 메모리 등)",
+  spring: "Spring·JPA (IoC/DI, AOP, 트랜잭션, 영속성 컨텍스트, N+1, Spring Boot 등)",
+  db: "데이터베이스 (인덱스, 트랜잭션 격리 수준, 락, 실행 계획, 정규화, MySQL/PostgreSQL)",
+  network: "네트워크 (HTTP, TCP/IP, HTTPS/TLS, 로드밸런서, 커넥션 풀 등)",
+  os: "운영체제 (프로세스/스레드, 동기화, 메모리, 컨텍스트 스위칭 등)",
+  arch: "설계·아키텍처 (객체지향/SOLID, 레이어드·헥사고날, MSA, 캐시 전략, 메시지 큐 등)",
+  security: "보안 (인증/인가, JWT·세션, OAuth2, SQL Injection, XSS/CSRF 등)",
+  ds: "자료구조·알고리즘 (해시, 트리, 정렬, 시간 복잡도 — Java 구현 관점)",
+  web: "웹·인프라 (REST API 설계, 캐시, CDN, Docker, CI/CD, 모니터링 등)",
 };
 
 /** 한국 시간 오늘 YYYY-MM-DD */
@@ -29,14 +31,19 @@ function kstToday() {
   return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 }
 
-/** 요일별 분야: 월 OS · 화 네트워크 · 수 DB · 목 자료구조 · 금 웹/보안/설계 번갈아 */
+/**
+ * 요일별 분야 (Java 백엔드 2년차 기준)
+ * 월 Java·JVM · 화 Spring·JPA · 수 DB · 목 네트워크/OS 번갈아 · 금 설계/보안/자료구조/웹 돌아가며
+ */
 function categoryFor(date) {
   const d = new Date(`${date}T12:00:00+09:00`);
   const dow = d.getUTCDay();
-  const byDay = { 1: "os", 2: "network", 3: "db", 4: "ds" };
-  if (byDay[dow]) return byDay[dow];
   const week = Math.floor(d.getTime() / (7 * 86400_000));
-  return ["web", "security", "arch"][week % 3];
+  if (dow === 1) return "java";
+  if (dow === 2) return "spring";
+  if (dow === 3) return "db";
+  if (dow === 4) return ["network", "os"][week % 2];
+  return ["arch", "security", "ds", "web"][week % 4];
 }
 
 function readExisting() {
@@ -60,22 +67,26 @@ function readExisting() {
 function buildPrompt(category, previous) {
   const label = CATEGORIES[category];
   const prevList = previous.length ? previous.map((p) => `- ${p.title}`).join("\n") : "(아직 없음)";
-  return `너는 시니어 백엔드 개발자이자 친절한 멘토야. 2년차 개발자가 출근길 5분 안에 읽고 "아, 그래서 그렇구나" 할 수 있는 CS 글을 한 편 써 줘.
+  return `너는 대기업·유니콘에서 Java/Spring 백엔드 면접관을 여러 번 해 본 시니어 개발자야.
+독자는 **Java·Spring 으로 일하는 2년차 백엔드 개발자**이고, **이직 준비**도 하고 있어.
+출근길 5분 안에 읽고 "이건 면접에서 이렇게 답하면 되겠구나"까지 정리되는 글을 한 편 써 줘.
 
 오늘 분야: ${label}
 
 조건
-- 한국어, 존댓말 대신 부드러운 해요체.
-- 이론만 나열하지 말고 "실무에서 왜 중요한지"가 꼭 들어가게.
-- 너무 기초(변수란 무엇인가)도, 너무 학술적인 것(논문 수준)도 피하고 2년차가 면접이나 실무에서 마주칠 수준으로.
-- 아래 지난 주제와 겹치지 않는 새 주제를 골라. 비슷한 주제의 다른 각도도 피해.
-- 본문(body)은 마크다운. "## 소제목" 2~4개, 필요하면 표나 짧은 코드 블록. 700~1200자 정도.
-- practice 는 실무에서 마주치는 상황 3개를 "- " 목록으로.
-- interview 는 이 주제로 면접에서 나올 만한 질문 1개와 모범 답안(3~5문장).
-- quiz 는 보기 4개짜리 객관식 1문제. answer 는 정답 보기의 0부터 시작하는 번호.
-- keywords 는 같이 찾아보면 좋은 키워드 4~6개.
-- summary 는 홈 카드에 보일 2~3문장 요약 (150자 안팎).
-- minutes 는 읽는 데 걸리는 분(3~6).
+- 한국어, 부드러운 해요체.
+- 주제는 **실제 이직 기술 면접(2~4년차 Java 백엔드)에서 자주 나오는 것** 위주로. 너무 기초(변수란?)나 너무 학술적인 것은 피해.
+- 본문에 Java/Spring 코드 예시가 어울리면 짧게 넣어 (10줄 안팎, \`\`\`java 코드블록).
+- "개념 → 왜 중요한지(실무) → 자주 하는 오해/함정" 흐름으로.
+- 아래 지난 주제와 겹치지 않는 새 주제. 비슷한 주제의 다른 각도도 피해.
+- body: 마크다운, "## 소제목" 2~4개, 필요하면 표. 800~1300자.
+- practice: 실무에서 마주치는 상황 3개를 "- " 목록으로 (장애·성능·코드 리뷰 상황 등 구체적으로).
+- interview: 이 주제로 **이직 면접에서 실제로 받을 법한 질문** 1개와 모범 답안(4~6문장, 면접에서 말하듯이 결론 먼저).
+  followUps: 면접관이 이어서 물어볼 **꼬리 질문 2개**와 각각의 짧은 모범 답안(2~4문장).
+- quiz: 보기 4개짜리 객관식 1문제. answer 는 정답 보기의 0부터 시작하는 번호.
+- keywords: 같이 찾아보면 좋은 키워드 4~6개.
+- summary: 홈 카드에 보일 2~3문장 요약 (150자 안팎).
+- minutes: 읽는 데 걸리는 분(3~6).
 
 지난 주제
 ${prevList}
@@ -88,7 +99,11 @@ ${prevList}
   "keywords": ["...", "..."],
   "body": "## ...\\n...",
   "practice": "- ...\\n- ...\\n- ...",
-  "interview": { "question": "...", "answer": "..." },
+  "interview": {
+    "question": "...",
+    "answer": "...",
+    "followUps": [{ "question": "...", "answer": "..." }, { "question": "...", "answer": "..." }]
+  },
   "quiz": { "question": "...", "options": ["...", "...", "...", "..."], "answer": 0, "explain": "..." }
 }`;
 }
@@ -130,6 +145,9 @@ function validate(n) {
     n.quiz.answer < n.quiz.options.length &&
     Array.isArray(n.keywords);
   if (!ok) throw new Error("필요한 항목이 빠졌어요");
+  // 꼬리 질문은 있으면 정리, 없어도 됨
+  const f = Array.isArray(n.interview.followUps) ? n.interview.followUps : [];
+  n.interview.followUps = f.filter((x) => x && x.question && x.answer).slice(0, 3);
   return n;
 }
 

@@ -26,16 +26,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   // 아이폰 노치·홈 바 영역까지 배경을 채우고, 내용은 safe-area 로 피함
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#eef1f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1319" },
-  ],
+  // 기본이 다크 모드라 주소창·상태바도 어둡게
+  themeColor: "#0f1319",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // data-theme 은 아래 스크립트가 미리 넣어서 서버 HTML 과 다를 수 있음 → 경고 무시
-    <html lang="ko" className={bricolage.variable} suppressHydrationWarning>
+    <html lang="ko" data-theme="dark" className={bricolage.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {/* 본문 글꼴: 서버에 미리 연결해 두고 받기 (첫 글자가 빨리 보이게) */}

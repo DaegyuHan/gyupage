@@ -63,21 +63,40 @@ const Icon = {
   ),
 };
 
-function Interview({ q, a }: { q: string; a: string }) {
+function Reveal({ text, label }: { text: string; label: string }) {
   const [open, setOpen] = useState(false);
+  return open ? (
+    <p className="anim-fade mt-2 rounded-xl bg-sunken/70 p-4 text-[14px] leading-[1.8] text-ink-2">{text}</p>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className="mt-2 w-full rounded-xl border border-dashed border-line py-3 text-sm font-semibold text-ink-2 transition hover:border-accent hover:text-accent"
+    >
+      {label}
+    </button>
+  );
+}
+
+function Interview({ interview }: { interview: CsNote["interview"] }) {
+  const follow = interview.followUps ?? [];
   return (
     <>
-      <p className="text-[15px] font-semibold leading-relaxed">Q. {q}</p>
-      {open ? (
-        <p className="anim-fade mt-3 rounded-xl bg-sunken/70 p-4 text-[14px] leading-[1.8] text-ink-2">{a}</p>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="mt-3 w-full rounded-xl border border-dashed border-line py-3 text-sm font-semibold text-ink-2 transition hover:border-accent hover:text-accent"
-        >
-          먼저 답을 떠올려 보고, 눌러서 모범 답안 보기
-        </button>
+      <p className="text-[15px] font-semibold leading-relaxed">Q. {interview.question}</p>
+      <Reveal text={interview.answer} label="먼저 답을 떠올려 보고, 눌러서 모범 답안 보기" />
+      {follow.length > 0 && (
+        <div className="mt-5 space-y-4 border-t border-line-soft pt-4">
+          <p className="text-xs font-bold text-ink-3">면접관의 꼬리 질문</p>
+          {follow.map((f, i) => (
+            <div key={i}>
+              <p className="text-[14px] font-semibold leading-relaxed">
+                <span className="mr-1 text-accent">↳</span>
+                {f.question}
+              </p>
+              <Reveal text={f.answer} label="답 보기" />
+            </div>
+          ))}
+        </div>
       )}
     </>
   );
@@ -194,8 +213,8 @@ export default function CsArticle({ note, prev, next, sample = false }: { note: 
         <Block label="실무에서는" icon={Icon.work}>
           <Md source={note.practice} />
         </Block>
-        <Block label="면접에서 나온다면" icon={Icon.ask}>
-          <Interview q={note.interview.question} a={note.interview.answer} />
+        <Block label="이직 면접에서 나온다면" icon={Icon.ask}>
+          <Interview key={note.date} interview={note.interview} />
         </Block>
         <Block label="확인 퀴즈" icon={Icon.quiz}>
           <Quiz key={note.date} quiz={note.quiz} />

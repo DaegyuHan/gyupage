@@ -1,5 +1,5 @@
 /** 오늘의 CS: 매일 아침 AI 가 만들어 줄 글 한 편 */
-export type CsCategory = "os" | "network" | "db" | "ds" | "web" | "security" | "arch";
+export type CsCategory = "java" | "spring" | "os" | "network" | "db" | "ds" | "web" | "security" | "arch";
 
 export interface CsQuiz {
   question: string;
@@ -22,7 +22,12 @@ export interface CsNote {
   body: string;
   /** 실무에서 마주치는 상황 (마크다운) */
   practice: string;
-  interview: { question: string; answer: string };
+  interview: {
+    question: string;
+    answer: string;
+    /** 면접관이 이어서 물어볼 꼬리 질문 */
+    followUps?: { question: string; answer: string }[];
+  };
   quiz: CsQuiz;
   keywords: string[];
   /** 읽는 데 걸리는 시간(분) */
@@ -30,6 +35,8 @@ export interface CsNote {
 }
 
 export const CS_CATEGORY: Record<CsCategory, { label: string; color: string }> = {
+  java: { label: "Java·JVM", color: "#e76f00" },
+  spring: { label: "Spring·JPA", color: "#4f9a2d" },
   os: { label: "운영체제", color: "#7c5cff" },
   network: { label: "네트워크", color: "#1f8fe5" },
   db: { label: "데이터베이스", color: "#0e9f6e" },

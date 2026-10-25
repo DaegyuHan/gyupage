@@ -233,4 +233,4 @@ async function load(): Promise<MyTeam[]> {
   return ok;
 }
 
-export const getMyTeams = cached("myteam-v6", 60 * 30, load);
+export const getMyTeams = cached("myteam-v6", 60 * 5, load);

@@ -19,24 +19,8 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
-    setTheme((document.documentElement.dataset.theme as Theme) ?? "light");
-
-    // 직접 고른 적이 없으면 시스템 설정이 바뀔 때 따라감
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e: MediaQueryListEvent) => {
-      let saved: string | null = null;
-      try {
-        saved = localStorage.getItem(KEY);
-      } catch {
-        /* 무시 */
-      }
-      if (saved) return;
-      const next: Theme = e.matches ? "dark" : "light";
-      apply(next, true);
-      setTheme(next);
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    // 기본은 다크 (직접 라이트로 바꾼 경우만 라이트)
+    setTheme((document.documentElement.dataset.theme as Theme) ?? "dark");
   }, []);
 
   const toggle = () => {
