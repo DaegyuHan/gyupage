@@ -1,0 +1,51 @@
+# Daily CS — 평일 아침마다 Claude 로 CS 글 한 편을 만들어 content/cs 에 올림
+# 저장소 Settings → Secrets and variables → Actions 에 ANTHROPIC_API_KEY 를 등록해야 동작해요.
+# 올라가면 Vercel 이 자동으로 다시 배포해서 홈에 새 글이 떠요.
+name: Daily CS
+
+on:
+  schedule:
+    # 한국 시간 월~금 08:10 (= UTC 일~목 23:10). GitHub 예약 실행은 10~20분 늦을 수 있어요.
+    - cron: "10 23 * * 0-4"
+  # Actions 탭에서 'Run workflow' 버튼으로 바로 실행
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "만들 날짜 (YYYY-MM-DD, 비우면 오늘)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-cs
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 글 만들기
+        run: node scripts/generate-cs.mjs ${{ github.event.inputs.date }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: 저장소에 올리기
+        run: |
+          git add content/cs
+          if git diff --cached --quiet; then
+            echo "새 글 없음"
+            exit 0
+          fi
+          # Vercel 이 배포를 막지 않도록 저장소 주인 이름으로 커밋
+          git config user.name "Daegyu Han"
+          git config user.email "bigstar77han@gmail.com"
+          git commit -m "Daily CS: $(TZ=Asia/Seoul date +%F)"
+          git push
