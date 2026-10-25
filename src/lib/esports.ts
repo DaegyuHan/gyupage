@@ -3,6 +3,7 @@
  * T1, 한화생명(HLE) 경기만 골라서 다음 경기 / 최근 결과로 나눔. 10분 캐시.
  */
 import { cached } from "./football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 const API = "https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=ko-KR";
 const PUBLIC_KEY = "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z";
@@ -70,7 +71,7 @@ interface RawEvent {
 }
 
 async function load(): Promise<EsportsMatch[]> {
-  const res = await fetch(API, { headers: { "x-api-key": PUBLIC_KEY }, cache: "no-store" });
+  const res = await mfetch(API, { headers: { "x-api-key": PUBLIC_KEY }, cache: "no-store" });
   if (!res.ok) throw new Error(`lolesports ${res.status}`);
   const j = (await res.json()) as { data?: { schedule?: { events?: RawEvent[] } } };
   const events = j.data?.schedule?.events ?? [];

@@ -8,6 +8,7 @@ import { cached } from "../football/apiFootball";
 import { getStandings } from "../football/standings";
 import type { LeagueId } from "../football/types";
 import type { Form, MtMatch, MyTeam } from "./types";
+import { mfetch } from "@/lib/server/monitor";
 
 export * from "./types";
 
@@ -87,7 +88,7 @@ interface EspnEvent {
 
 async function espnEvents(teamId: string, fixture: boolean): Promise<EspnEvent[]> {
   const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/all/teams/${teamId}/schedule${fixture ? "?fixture=true" : ""}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await mfetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`espn ${res.status}`);
   return ((await res.json()) as { events?: EspnEvent[] }).events ?? [];
 }
@@ -154,7 +155,7 @@ async function fromNaver(code: string) {
   // 승격·강등에 상관없이 찾도록 1·2부 둘 다
   const lists = await Promise.all(
     ["kleague", "kleague2"].map(async (cat) => {
-      const res = await fetch(
+      const res = await mfetch(
         `https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=${cat}&fromDate=${from}&toDate=${to}&size=500`,
         { headers: { Referer: "https://m.sports.naver.com/" }, cache: "no-store" },
       );

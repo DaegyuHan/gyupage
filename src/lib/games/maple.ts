@@ -4,6 +4,7 @@
  * 현재 정보는 1시간, 지난 날짜(경험치 기록)는 하루 동안 캐시.
  */
 import { cached } from "../football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 const BASE = "https://open.api.nexon.com/maplestory/v1";
 
@@ -23,7 +24,7 @@ async function nx<T>(path: string, params: Record<string, string>): Promise<T> {
   if (!key) throw new MapleSetupError("NO_KEY");
   await throttle();
   const qs = new URLSearchParams(params);
-  const res = await fetch(`${BASE}/${path}?${qs}`, { headers: { "x-nxopen-api-key": key }, cache: "no-store" });
+  const res = await mfetch(`${BASE}/${path}?${qs}`, { headers: { "x-nxopen-api-key": key }, cache: "no-store" });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`nexon ${path} ${res.status} ${body.slice(0, 200)}`);

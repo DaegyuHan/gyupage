@@ -4,6 +4,7 @@
  * 경기 상세는 바뀌지 않으니 오래 저장하고, 목록·랭크는 20분마다 새로.
  */
 import { cached } from "../football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 const ASIA = "https://asia.api.riotgames.com";
 const KR = "https://kr.api.riotgames.com";
@@ -14,7 +15,7 @@ export class LolKeyError extends Error {}
 async function riot<T>(url: string): Promise<T> {
   const key = process.env.RIOT_API_KEY;
   if (!key) throw new LolSetupError("NO_KEY");
-  const res = await fetch(url, { headers: { "X-Riot-Token": key }, cache: "no-store" });
+  const res = await mfetch(url, { headers: { "X-Riot-Token": key }, cache: "no-store" });
   if (res.status === 401 || res.status === 403) {
     const body = await res.text().catch(() => "");
     throw new LolKeyError(`riot ${res.status} ${url.replace(/\?.*/, "").replace(/^https:\/\/[^/]+/, "")} ${body.slice(0, 120)}`);
@@ -74,7 +75,7 @@ const kstDate = (ms: number) => new Date(ms + 9 * 3600_000).toISOString().slice(
 
 async function ddragonVersion() {
   try {
-    const res = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { cache: "no-store" });
+    const res = await mfetch("https://ddragon.leagueoflegends.com/api/versions.json", { cache: "no-store" });
     return ((await res.json()) as string[])[0];
   } catch {
     return "14.1.1";

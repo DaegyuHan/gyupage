@@ -4,6 +4,7 @@
  * 프로필이 '공개'여야 게임 기록이 나와요. 15분 캐시.
  */
 import { cached } from "../football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 const API = "https://api.steampowered.com";
 
@@ -13,7 +14,7 @@ async function st<T>(path: string, params: Record<string, string>): Promise<T> {
   const key = process.env.STEAM_API_KEY;
   if (!key) throw new SteamSetupError("NO_KEY");
   const qs = new URLSearchParams({ key, format: "json", ...params });
-  const res = await fetch(`${API}/${path}?${qs}`, { cache: "no-store" });
+  const res = await mfetch(`${API}/${path}?${qs}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`steam ${path.split("/")[1]} ${res.status}`);
   return (await res.json()) as T;
 }

@@ -2,6 +2,7 @@ import { addDays, kstDate } from "./kst";
 import { afGet, cached, TTL } from "./apiFootball";
 import { API_FOOTBALL_LEAGUES, FOOTBALL_DATA_CODES, teamName } from "./leagues";
 import type { Match, MatchStatus } from "./types";
+import { mfetch } from "@/lib/server/monitor";
 
 /** football-data.org(예비용) 캐시 시간 */
 const TTL_TODAY = 60 * 30;
@@ -36,7 +37,7 @@ export async function fetchOverseas(yesterday: string, today: string): Promise<M
   url.searchParams.set("dateFrom", addDays(yesterday, -1));
   url.searchParams.set("dateTo", addDays(today, 1));
 
-  const res = await fetch(url, {
+  const res = await mfetch(url, {
     headers: { "X-Auth-Token": token },
     next: { revalidate: TTL_TODAY },
   });
@@ -125,7 +126,7 @@ function normK(name: string) {
 const naverK = cached("naver-k-v1", 60, async (from: string, to: string): Promise<NaverGame[]> => {
   const lists = await Promise.all(
     ["kleague", "kleague2"].map(async (cat) => {
-      const res = await fetch(
+      const res = await mfetch(
         `https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=${cat}&fromDate=${from}&toDate=${to}&size=200`,
         { headers: { Referer: "https://m.sports.naver.com/" }, cache: "no-store" },
       );

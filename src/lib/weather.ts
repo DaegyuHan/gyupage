@@ -3,6 +3,7 @@
  * 지금 날씨 + 오늘부터 7일 예보 + 지금부터 내일 밤까지 시간별. 30분 캐시.
  */
 import { cached } from "./football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 export interface WeatherDay {
   date: string; // YYYY-MM-DD (한국 시간)
@@ -53,7 +54,7 @@ async function load(lat: number, lon: number): Promise<Omit<WeatherResponse, "ho
     `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
     `&hourly=temperature_2m,weather_code,precipitation_probability,is_day` +
     `&timezone=Asia%2FSeoul&forecast_days=7`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await mfetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`open-meteo ${res.status}`);
   const j = (await res.json()) as {
     current: { temperature_2m: number; apparent_temperature: number; weather_code: number; is_day: number };

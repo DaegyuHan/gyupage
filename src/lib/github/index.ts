@@ -4,6 +4,7 @@
  * - 최근 저장소: api.github.com 공개 API (GITHUB_TOKEN 이 있으면 한도가 넉넉해짐)
  */
 import { cached } from "../football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 export const GITHUB_USER = process.env.GITHUB_USER || "DaegyuHan";
 /** 화면에 보여줄 기간(일) */
@@ -68,8 +69,8 @@ async function load(): Promise<GithubSummary> {
   if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
 
   const [contribRes, reposRes] = await Promise.all([
-    fetch(`https://github-contributions-api.jogruber.de/v4/${user}?y=last`, { cache: "no-store" }),
-    fetch(`https://api.github.com/users/${user}/repos?sort=pushed&per_page=6`, { headers, cache: "no-store" }).catch(() => null),
+    mfetch(`https://github-contributions-api.jogruber.de/v4/${user}?y=last`, { cache: "no-store" }),
+    mfetch(`https://api.github.com/users/${user}/repos?sort=pushed&per_page=6`, { headers, cache: "no-store" }).catch(() => null),
   ]);
   if (!contribRes.ok) throw new Error(`contributions ${contribRes.status}`);
   const contrib = (await contribRes.json()) as { contributions?: ContribDay[] };

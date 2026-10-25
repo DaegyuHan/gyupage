@@ -9,6 +9,7 @@
 import { cached } from "./apiFootball";
 import { currentSeason } from "./leagues";
 import type { LeagueId } from "./types";
+import { mfetch } from "@/lib/server/monitor";
 
 export type Zone = "top" | "second" | "third" | "playoff" | "relegation" | null;
 
@@ -61,7 +62,7 @@ const TTL = 60 * 30;
 const UA = { "User-Agent": "Mozilla/5.0 (gyupage personal dashboard)" };
 
 async function getJson<T>(url: string, headers: Record<string, string> = {}): Promise<T> {
-  const res = await fetch(url, { cache: "no-store", headers: { ...UA, ...headers } });
+  const res = await mfetch(url, { cache: "no-store", headers: { ...UA, ...headers } });
   if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
   return (await res.json()) as T;
 }

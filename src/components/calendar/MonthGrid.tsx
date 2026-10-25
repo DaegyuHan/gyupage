@@ -12,6 +12,8 @@ interface Props {
   onSelect: (key: string) => void;
   onAdd: (key: string) => void;
   onEventClick: (ev: CalendarEvent) => void;
+  /** 날짜 → 공휴일 이름 */
+  holidays?: Map<string, string>;
 }
 
 const MAX_BAR_LANES = 3;
@@ -60,7 +62,7 @@ export function layoutWeek(weekKeys: string[], multi: CalendarEvent[]): Segment[
   return segs;
 }
 
-export default function MonthGrid({ year, month, events, selected, onSelect, onAdd, onEventClick }: Props) {
+export default function MonthGrid({ year, month, events, selected, onSelect, onAdd, onEventClick, holidays }: Props) {
   const days = monthGrid(year, month);
   const today = todayKey();
   const multi = events.filter((e) => e.start !== e.end);
@@ -101,6 +103,7 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
               const hiddenBars = segs.filter((s) => s.lane >= MAX_BAR_LANES && s.startCol <= i && s.endCol >= i).length;
               const more = Math.max(0, daySingles.length - MAX_SINGLE) + hiddenBars;
               const dow = d.getDay();
+              const holiday = holidays?.get(key);
 
               return (
                 <div
@@ -111,20 +114,31 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                   } ${isSelected ? "bg-accent-soft/60" : "hover:bg-paper/70"}`}
                 >
                   <div className="relative flex h-7 items-center justify-center px-1 sm:justify-between">
-                    <span
-                      className={`numeral flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[13px] font-semibold sm:h-7 sm:min-w-7 sm:px-1.5 sm:text-[15px] ${
-                        isToday
-                          ? "bg-accent text-on-accent"
-                          : !inMonth
-                            ? "text-ink-3/60"
-                            : dow === 0
-                              ? "text-[#d4483b]"
-                              : dow === 6
-                                ? "text-accent"
-                                : "text-ink"
-                      }`}
-                    >
-                      {d.getDate()}
+                    <span className="flex min-w-0 items-center gap-1">
+                      <span
+                        className={`numeral flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1 text-[13px] font-semibold sm:h-7 sm:min-w-7 sm:px-1.5 sm:text-[15px] ${
+                          isToday
+                            ? holiday
+                              ? "bg-[#d4483b] text-white"
+                              : "bg-accent text-on-accent"
+                            : !inMonth
+                              ? holiday || dow === 0
+                                ? "text-[#d4483b]/45"
+                                : "text-ink-3/60"
+                              : holiday || dow === 0
+                                ? "text-[#d4483b]"
+                                : dow === 6
+                                  ? "text-accent"
+                                  : "text-ink"
+                        }`}
+                        title={holiday}
+                      >
+                        {d.getDate()}
+                      </span>
+                      {/* 공휴일 이름: 컴퓨터는 날짜 옆, 휴대폰은 좁아서 빨간 날짜만 (고르면 아래에 이름) */}
+                      {holiday && (
+                        <span className={`hidden truncate text-[11px] font-semibold text-[#d4483b] sm:inline ${inMonth ? "" : "opacity-50"}`}>{holiday}</span>
+                      )}
                     </span>
                     <button
                       onClick={(e) => {

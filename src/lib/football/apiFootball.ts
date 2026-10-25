@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { mfetch, reportApiError } from "@/lib/server/monitor";
 
 /**
  * API-Football 공통 호출부.
@@ -17,7 +18,7 @@ export async function afGet<T>(path: string, params: Record<string, string | num
   if (!key) throw new Error("NO_KEY");
 
   const qs = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
-  const res = await fetch(`${BASE}/${path}?${qs}`, {
+  const res = await mfetch(`${BASE}/${path}?${qs}`, {
     headers: { "x-apisports-key": key },
     cache: "no-store",
   });
@@ -27,7 +28,9 @@ export async function afGet<T>(path: string, params: Record<string, string | num
   // 요금제 제한/한도 초과도 200 + errors 로 옴
   const errs = json.errors;
   if (errs && (Array.isArray(errs) ? errs.length > 0 : Object.keys(errs as object).length > 0)) {
-    throw new ApiFootballError(`api-football ${JSON.stringify(errs)}`);
+    const msg = `api-football ${JSON.stringify(errs)}`;
+    reportApiError("api-football", msg);
+    throw new ApiFootballError(msg);
   }
   return json.response;
 }

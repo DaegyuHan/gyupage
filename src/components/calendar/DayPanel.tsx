@@ -7,6 +7,8 @@ import type { CalendarEvent } from "@/lib/types";
 
 interface Props {
   dateKey: string;
+  /** 공휴일 이름 */
+  holiday?: string;
   events: CalendarEvent[];
   onAdd: () => void;
   onEventClick: (ev: CalendarEvent) => void;
@@ -14,7 +16,7 @@ interface Props {
   onMemoChange: (ev: CalendarEvent, memo: string) => void;
 }
 
-export default function DayPanel({ dateKey, events, onAdd, onEventClick, onMemoChange }: Props) {
+export default function DayPanel({ dateKey, holiday, events, onAdd, onEventClick, onMemoChange }: Props) {
   const d = fromKey(dateKey);
   const isToday = dateKey === todayKey();
   const list = events
@@ -28,12 +30,13 @@ export default function DayPanel({ dateKey, events, onAdd, onEventClick, onMemoC
     <section>
       <header className="mb-4 flex items-end justify-between gap-3">
         <div className="flex items-end gap-3">
-          <span className="numeral text-5xl font-extrabold leading-[0.8]">{d.getDate()}</span>
+          <span className={`numeral text-5xl font-extrabold leading-[0.8] ${holiday || d.getDay() === 0 ? "text-[#d4483b]" : ""}`}>{d.getDate()}</span>
           <div className="leading-tight">
             <div className="text-xs text-ink-2">{d.getMonth() + 1}월</div>
             <div className="font-bold">
               {WEEKDAYS[d.getDay()]}요일{isToday && <span className="ml-1.5 text-accent">오늘</span>}
             </div>
+            {holiday && <div className="mt-0.5 text-xs font-semibold text-[#d4483b]">{holiday}</div>}
           </div>
         </div>
         <button

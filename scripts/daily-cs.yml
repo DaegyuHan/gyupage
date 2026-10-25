@@ -49,3 +49,15 @@ jobs:
           git config user.email "bigstar77han@gmail.com"
           git commit -m "Daily CS: $(TZ=Asia/Seoul date +%F)"
           git push
+
+      # Claude 크레딧이 떨어졌거나 키가 틀리면 여기로 — 저장소 Secrets 에 DISCORD_WEBHOOK_URL 도 넣어 두세요
+      - name: 실패하면 디스코드로 알림
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then exit 0; fi
+          curl -sS -H "content-type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"⚠️ Daily CS 글 만들기 실패\",\"color\":15026253,\"description\":\"Claude API 크레딧·키를 확인해 주세요.\\n로그: $RUN_URL\"}]}" \
+            "$DISCORD_WEBHOOK_URL"

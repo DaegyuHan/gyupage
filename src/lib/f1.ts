@@ -4,6 +4,7 @@
  * - 예선·스프린트·결승 결과: OpenF1 (세션이 끝나면 금방 올라옴, 키 필요 없음)
  */
 import { cached } from "./football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 export interface F1Session {
   key: "fp1" | "fp2" | "fp3" | "sprintQuali" | "sprint" | "quali" | "race";
@@ -196,7 +197,7 @@ function toRace(r: JolpicaRace): F1Race {
 }
 
 async function json<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await mfetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
   return (await res.json()) as T;
 }

@@ -11,6 +11,7 @@ import type { CategoryId } from "@/lib/types";
 import DayPanel from "./DayPanel";
 import MonthGrid from "./MonthGrid";
 import { useEventEditor } from "./useEventEditor";
+import { useHolidays } from "@/lib/useHolidays";
 
 /** 캘린더 탭: 월간 달력 + 카테고리 필터 + 선택한 날 */
 export default function CalendarView() {
@@ -26,6 +27,8 @@ export default function CalendarView() {
 
 
   const filtered = useMemo(() => events.filter((e) => visible.has(e.category)), [events, visible]);
+  // 달력 6주가 앞뒤 해로 넘어갈 수 있어서 3년치
+  const holidays = useHolidays([year - 1, year, year + 1]);
 
   const moveMonth = (delta: number) => {
     const d = new Date(year, month + delta, 1);
@@ -165,6 +168,7 @@ export default function CalendarView() {
             onSelect={setSelected}
             onAdd={openNew}
             onEventClick={editor.openEdit}
+            holidays={holidays}
           />
           <p className="mt-3 text-xs text-ink-3">날짜를 먼저 한 번 눌러 고른 뒤, 그 칸의 일정을 누르면 편집하고 + 를 누르면 추가해요.</p>
         </div>
@@ -173,6 +177,7 @@ export default function CalendarView() {
         <aside className="space-y-10 xl:pt-[68px]">
           <DayPanel
             dateKey={selected}
+            holiday={holidays.get(selected)}
             events={filtered}
             onAdd={() => openNew(selected)}
             onEventClick={editor.openEdit}

@@ -6,6 +6,7 @@
  * 같은 사건을 여러 언론사가 쓴 기사는 비슷한 제목끼리 걸러서 서로 다른 소식만 보여줌.
  */
 import { cached } from "./football/apiFootball";
+import { mfetch } from "@/lib/server/monitor";
 
 export interface NewsItem {
   title: string;
@@ -199,7 +200,7 @@ function parse(xml: string, fallbackSource = ""): NewsItem[] {
 }
 
 async function fetchFeed(url: string, source = ""): Promise<NewsItem[]> {
-  const res = await fetch(url, { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0 (gyupage personal dashboard)" } });
+  const res = await mfetch(url, { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0 (gyupage personal dashboard)" } });
   if (!res.ok) throw new Error(`feed ${new URL(url).host} ${res.status}`);
   return parse(await res.text(), source);
 }

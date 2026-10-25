@@ -22,6 +22,9 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     AND to_regclass('public.books') IS NOT NULL
     AND to_regclass('public.reading_logs') IS NOT NULL
     AND to_regclass('public.history_docs') IS NOT NULL
+    AND to_regclass('public.api_usage') IS NOT NULL
+    AND to_regclass('public.notify_log') IS NOT NULL
+    AND to_regclass('public.push_subs') IS NOT NULL
     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'kind') AS ok`) as { ok: boolean }[];
   if (check?.ok) return;
 
@@ -76,6 +79,34 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
   )`;
   // 회사 / 기타 구분 (나중에 추가된 칸)
   await sql`ALTER TABLE history_docs ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'company'`;
+  // 외부 API 사용량 (하루·출처별) — 디스코드 리포트용
+  await sql`CREATE TABLE IF NOT EXISTS api_usage (
+    day text NOT NULL,
+    source text NOT NULL,
+    calls int NOT NULL DEFAULT 0,
+    errors int NOT NULL DEFAULT 0,
+    last_status int,
+    last_error text,
+    last_error_at bigint,
+    last_ok_at bigint,
+    remaining int,
+    quota int,
+    updated_at bigint NOT NULL,
+    PRIMARY KEY (day, source)
+  )`;
+  // 같은 알림을 여러 번 보내지 않도록 (키 → 마지막으로 보낸 시각)
+  await sql`CREATE TABLE IF NOT EXISTS notify_log (
+    key text PRIMARY KEY,
+    at bigint NOT NULL
+  )`;
+  // 웹 푸시 구독 (기기마다 하나)
+  await sql`CREATE TABLE IF NOT EXISTS push_subs (
+    endpoint text PRIMARY KEY,
+    p256dh text NOT NULL,
+    auth text NOT NULL,
+    device text,
+    created_at bigint NOT NULL
+  )`;
   await sql`CREATE TABLE IF NOT EXISTS prefs (
     key text PRIMARY KEY,
     value jsonb NOT NULL,

@@ -8,6 +8,7 @@ import type { HomeMatch } from "@/lib/home/matches";
 import type { CalendarEvent } from "@/lib/types";
 import type { WeatherDay } from "@/lib/weather";
 import WeatherIcon, { weatherLabel } from "@/components/weather/WeatherIcon";
+import { useHolidays } from "@/lib/useHolidays";
 
 interface Props {
   events: CalendarEvent[];
@@ -134,6 +135,7 @@ export default function WeekBoard({ events, start, onAdd, onOpen, weather, heade
   const days = Array.from({ length: 7 }, (_, i) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + i));
   const keys = days.map(toKey);
   const end = keys[6];
+  const holidays = useHolidays([...new Set(keys.map((k) => Number(k.slice(0, 4))))]);
 
   const inWeek = events.filter((e) => e.start <= end && e.end >= start);
   const multi = inWeek.filter((e) => e.start !== e.end);
@@ -177,10 +179,13 @@ export default function WeekBoard({ events, start, onAdd, onOpen, weather, heade
                 {/* 날짜 머리 */}
                 <div className="flex h-[98px] items-start justify-between px-3 pt-3">
                   <div>
-                    <div className={`text-xs font-semibold ${today ? "text-accent" : dow === 0 ? "text-[#d4483b]" : dow === 6 ? "text-accent" : "text-ink-3"}`}>
+                    <div className={`text-xs font-semibold ${today ? "text-accent" : dow === 0 || holidays.has(key) ? "text-[#d4483b]" : dow === 6 ? "text-accent" : "text-ink-3"}`}>
                       {dayLabel(d, i)}
                     </div>
-                    <div className={`numeral text-[28px] font-extrabold leading-none ${dow === 0 && !today ? "text-[#d4483b]" : ""}`}>{d.getDate()}</div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={`numeral text-[28px] font-extrabold leading-none ${(dow === 0 || holidays.has(key)) && !today ? "text-[#d4483b]" : ""}`}>{d.getDate()}</span>
+                      {holidays.has(key) && <span className="max-w-[88px] truncate text-[11px] font-semibold text-[#d4483b]" title={holidays.get(key)}>{holidays.get(key)}</span>}
+                    </div>
                     <div className="mt-2">
                       <DayWeather w={weather?.get(key)} />
                     </div>
@@ -268,8 +273,9 @@ export default function WeekBoard({ events, start, onAdd, onOpen, weather, heade
           return (
             <li key={key} className={`flex gap-4 rounded-2xl px-3 py-3 ${today ? "bg-accent-soft/50" : ""}`}>
               <div className="w-[68px] shrink-0">
-                <div className={`text-[11px] font-semibold ${today ? "text-accent" : "text-ink-3"}`}>{dayLabel(d, i)}</div>
-                <div className="numeral text-2xl font-extrabold leading-tight">{d.getDate()}</div>
+                <div className={`text-[11px] font-semibold ${today ? "text-accent" : holidays.has(key) || d.getDay() === 0 ? "text-[#d4483b]" : d.getDay() === 6 ? "text-accent" : "text-ink-3"}`}>{dayLabel(d, i)}</div>
+                <div className={`numeral text-2xl font-extrabold leading-tight ${holidays.has(key) || d.getDay() === 0 ? "text-[#d4483b]" : ""}`}>{d.getDate()}</div>
+                {holidays.has(key) && <div className="truncate text-[10px] font-semibold text-[#d4483b]">{holidays.get(key)}</div>}
                 <DayWeather w={weather?.get(key)} compact />
               </div>
               <div className="min-w-0 flex-1 space-y-1">

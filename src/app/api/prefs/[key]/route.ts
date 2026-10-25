@@ -3,7 +3,7 @@ import { guarded } from "@/lib/server/api";
 import { db } from "@/lib/server/db";
 
 /** 기기 사이에 같이 쓰는 작은 설정값 (정해 둔 이름만) */
-const KEYS = new Set(["csRead", "weatherPlace"]);
+const KEYS = new Set(["csRead", "weatherPlace", "push"]);
 type Ctx = { params: Promise<{ key: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
