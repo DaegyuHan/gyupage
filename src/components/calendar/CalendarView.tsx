@@ -1,21 +1,21 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import { todayKey } from "@/lib/date";
 import Link from "next/link";
 import LegacyImport from "@/components/LegacyImport";
 import SaveError from "@/components/SaveError";
 import { useEvents } from "@/lib/eventStore";
-import type { CalendarEvent, CategoryId } from "@/lib/types";
+import type { CategoryId } from "@/lib/types";
 import DayPanel from "./DayPanel";
 import MonthGrid from "./MonthGrid";
 import { useEventEditor } from "./useEventEditor";
 
-/** 캘린더 탭: 월간 달력 + 카테고리 필터 + 선택한 날 + 백업 */
+/** 캘린더 탭: 월간 달력 + 카테고리 필터 + 선택한 날 */
 export default function CalendarView() {
   const store = useEvents();
-  const { events, loaded, replaceAll } = store;
+  const { events, loaded } = store;
   const editor = useEventEditor(store);
 
   const now = new Date();
@@ -24,7 +24,6 @@ export default function CalendarView() {
   const [selected, setSelected] = useState(todayKey());
   const [visible, setVisible] = useState<Set<CategoryId>>(new Set(CATEGORIES.map((c) => c.id)));
 
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => events.filter((e) => visible.has(e.category)), [events, visible]);
 
@@ -50,23 +49,6 @@ export default function CalendarView() {
   const openNew = (key: string) => {
     setSelected(key);
     editor.openNew(key);
-  };
-
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(events, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `gyupage-events-${todayKey()}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-  const importJson = async (file: File) => {
-    try {
-      const data = JSON.parse(await file.text());
-      if (Array.isArray(data)) replaceAll(data as CalendarEvent[]);
-    } catch {
-      alert("JSON 파일을 읽지 못했어요. 내보내기로 만든 파일인지 확인해 주세요.");
-    }
   };
 
   // 서버(UTC)와 브라우저(KST)의 '오늘'이 달라 생기는 hydration 불일치를 피하려고 클라이언트에서만 그림
@@ -184,7 +166,10 @@ export default function CalendarView() {
             onAdd={openNew}
             onEventClick={editor.openEdit}
           />
-          <p className="mt-3 text-xs text-ink-3">날짜를 두 번 누르면 바로 일정을 추가할 수 있어요.</p>
+          <p className="mt-3 text-xs text-ink-3">
+            <span className="sm:hidden">날짜를 한 번 누르면 + 가 나와요. 눌러서 바로 일정을 추가해요.</span>
+            <span className="hidden sm:inline">날짜를 두 번 누르면 바로 일정을 추가할 수 있어요.</span>
+          </p>
         </div>
 
         {/* 선택한 날 */}
@@ -196,30 +181,6 @@ export default function CalendarView() {
             onEventClick={editor.openEdit}
             onMemoChange={editor.updateMemo}
           />
-          <section className="border-t border-line pt-4 text-xs text-ink-3">
-            <div className="flex gap-3">
-              <button onClick={exportJson} className="font-medium text-ink-2 underline-offset-2 hover:underline">
-                백업 파일 내보내기
-              </button>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="font-medium text-ink-2 underline-offset-2 hover:underline"
-              >
-                백업 불러오기
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/json"
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) importJson(f);
-                  e.target.value = "";
-                }}
-              />
-            </div>
-          </section>
         </aside>
       </div>
 

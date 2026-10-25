@@ -81,7 +81,7 @@ export default function TodayTodos() {
 
   if (!auth.loading && !auth.authed) {
     return (
-      <div className="mt-5 max-w-[520px]">
+      <div className="mt-5 w-full max-w-[520px]">
         <h2 className="mb-2 text-sm font-bold">오늘 꼭 할 일</h2>
         <Link
           href="/login?next=/"
@@ -94,7 +94,7 @@ export default function TodayTodos() {
   }
 
   return (
-    <div className="mt-5 max-w-[520px]">
+    <div className="mt-5 w-full max-w-[520px]">
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-bold">오늘 꼭 할 일</h2>
         {list.length > 0 && (
@@ -161,11 +161,12 @@ export default function TodayTodos() {
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={list.length ? "하나 더 적기" : "오늘 꼭 해야 할 일을 적고 Enter"}
+            placeholder={list.length ? "하나 더 적기" : "오늘 꼭 해야 할 일"}
             maxLength={80}
             // 테두리 상자가 이미 포커스를 보여줘서 입력칸 자체 테두리는 끔
             style={{ outline: "none" }}
-            className="min-w-0 flex-1 bg-transparent text-[15px] placeholder:text-ink-3"
+            size={1}
+            className="w-0 min-w-0 flex-1 bg-transparent text-[15px] placeholder:text-ink-3"
           />
           {text.trim() && (
             <button type="submit" className="shrink-0 rounded-md bg-ink px-2.5 py-1 text-xs font-semibold text-paper">

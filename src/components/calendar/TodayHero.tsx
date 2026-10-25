@@ -36,16 +36,18 @@ export default function TodayHero({ events, onOpen, children }: Props) {
   return (
     <section className="grid gap-8 border-b border-line pb-8 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-14">
       {/* 오늘 */}
-      <div className="flex items-start gap-6 sm:gap-8">
-        <div className="numeral select-none text-[112px] font-extrabold leading-[0.78] text-ink sm:text-[168px]">
+      {/* 휴대폰: 날짜·요일 한 줄 + 아래에 할 일(가로 꽉 차게) / 넓은 화면: 날짜 옆에 전부 */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-6 sm:gap-x-8">
+        <div className="numeral select-none text-[112px] font-extrabold leading-[0.78] text-ink sm:row-span-2 sm:text-[168px]">
           {d.getDate()}
         </div>
-        <div className="min-w-0 flex-1 pt-1">
+        <div className="min-w-0 self-end pb-1 sm:self-start sm:pb-0 sm:pt-1">
           <p className="text-ink-2">
             {d.getFullYear()}년 {d.getMonth() + 1}월
           </p>
           <p className="text-2xl font-bold tracking-tight sm:text-3xl">{WEEKDAYS[d.getDay()]}요일</p>
-
+        </div>
+        <div className="col-span-2 min-w-0 sm:col-span-1 sm:col-start-2">
           {children}
 
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
