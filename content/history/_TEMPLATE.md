@@ -1,6 +1,7 @@
 ---
 title: 제목
 date: 2025-01-01
+kind: 회사
 company: 회사명
 tags: [태그1, 태그2]
 summary: 목록에 보일 한 줄 요약 (없으면 본문 앞부분 자동)

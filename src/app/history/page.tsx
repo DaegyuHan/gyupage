@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { getAllHistory, groupByYear } from "@/lib/history";
+import { groupByYear, HISTORY_KINDS, type HistoryKind } from "@/lib/history";
+import { getAllHistoryMerged } from "@/lib/server/historyDb";
 
 export const metadata = { title: "히스토리 | 규페이지" };
+
+// 설정에서 올린 문서(DB)도 바로 보이게 요청마다 그림
+export const dynamic = "force-dynamic";
 
 function shortDate(date: string) {
   if (!date) return "";
@@ -9,8 +13,17 @@ function shortDate(date: string) {
   return d ? `${Number(m)}.${Number(d)}` : `${Number(m)}월`;
 }
 
-export default function HistoryPage() {
-  const docs = getAllHistory();
+const DESC: Record<HistoryKind, string> = {
+  company: "회사에서 해온 일들을 한 줄로 모아 봤어요.",
+  etc: "회사 밖에서 해 온 일들 — 개인 프로젝트, 공부, 대외 활동을 모아 봤어요.",
+};
+
+export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams;
+  const kind: HistoryKind = tab === "etc" ? "etc" : "company";
+  const all = await getAllHistoryMerged();
+  const count = (k: HistoryKind) => all.filter((d) => d.kind === k).length;
+  const docs = all.filter((d) => d.kind === kind);
   const groups = groupByYear(docs);
   const companies = [...new Set(docs.map((d) => d.company).filter(Boolean))] as string[];
 
@@ -20,8 +33,12 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">히스토리</h1>
           <p className="mt-3 max-w-xl text-ink-2">
-            회사에서 해온 일들을 한 줄로 모아 봤어요. <code className="rounded bg-sunken px-1.5 py-0.5 text-[0.85em]">content/history</code>{" "}
-            폴더에 마크다운 파일을 넣으면 날짜순으로 자동 정리돼요.
+            {DESC[kind]} <code className="rounded bg-sunken px-1.5 py-0.5 text-[0.85em]">content/history</code>{" "}
+            폴더에 넣거나{" "}
+            <Link href="/settings#history" className="font-semibold text-accent hover:underline">
+              설정
+            </Link>
+            에서 md 파일을 끌어다 놓으면 날짜순으로 자동 정리돼요.
           </p>
         </div>
         <div className="flex gap-8">
@@ -29,7 +46,7 @@ export default function HistoryPage() {
             <div className="numeral text-4xl font-extrabold">{docs.length}</div>
             <div className="text-sm text-ink-2">기록</div>
           </div>
-          {companies.length > 0 && (
+          {kind === "company" && companies.length > 0 && (
             <div>
               <div className="numeral text-4xl font-extrabold">{companies.length}</div>
               <div className="text-sm text-ink-2">회사</div>
@@ -38,9 +55,33 @@ export default function HistoryPage() {
         </div>
       </header>
 
+      {/* 회사 / 기타 */}
+      <nav className="mt-6 flex gap-1.5" aria-label="히스토리 구분">
+        {HISTORY_KINDS.map((k) => {
+          const on = k.id === kind;
+          return (
+            <Link
+              key={k.id}
+              href={k.id === "company" ? "/history" : "/history?tab=etc"}
+              aria-current={on ? "page" : undefined}
+              className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                on ? "border-transparent bg-ink text-paper" : "border-line text-ink-2 hover:border-ink-3 hover:text-ink"
+              }`}
+            >
+              {k.label}
+              <span className={`numeral text-xs ${on ? "text-paper/70" : "text-ink-3"}`}>{count(k.id)}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
       {docs.length === 0 && (
         <p className="py-16 text-center text-ink-2">
-          아직 기록이 없어요. <code>content/history/_TEMPLATE.md</code> 를 복사해서 첫 기록을 남겨 보세요.
+          아직 {kind === "etc" ? "기타" : "회사"} 기록이 없어요.{" "}
+          <Link href="/settings#history" className="font-semibold text-accent hover:underline">
+            설정에서 md 파일을 올려
+          </Link>{" "}
+          첫 기록을 남겨 보세요.
         </p>
       )}
 

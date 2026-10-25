@@ -166,10 +166,7 @@ export default function CalendarView() {
             onAdd={openNew}
             onEventClick={editor.openEdit}
           />
-          <p className="mt-3 text-xs text-ink-3">
-            <span className="sm:hidden">날짜를 한 번 누르면 + 가 나와요. 눌러서 바로 일정을 추가해요.</span>
-            <span className="hidden sm:inline">날짜를 두 번 누르면 바로 일정을 추가할 수 있어요.</span>
-          </p>
+          <p className="mt-3 text-xs text-ink-3">날짜를 먼저 한 번 눌러 고른 뒤, 그 칸의 일정을 누르면 편집하고 + 를 누르면 추가해요.</p>
         </div>
 
         {/* 선택한 날 */}

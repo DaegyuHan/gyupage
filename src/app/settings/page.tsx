@@ -1,6 +1,7 @@
 import BookSettings from "@/components/books/BookSettings";
 import RequireLogin from "@/components/RequireLogin";
 import WidgetSettings from "@/components/WidgetSettings";
+import HistoryUpload from "@/components/HistoryUpload";
 
 export const metadata = { title: "설정 | 규페이지" };
 
@@ -13,6 +14,7 @@ export default function SettingsPage() {
         </header>
         <div className="space-y-14 pt-8">
           <BookSettings />
+          <HistoryUpload />
           <WidgetSettings />
         </div>
       </div>

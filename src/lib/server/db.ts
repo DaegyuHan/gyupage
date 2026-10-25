@@ -20,7 +20,9 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     AND to_regclass('public.todos') IS NOT NULL
     AND to_regclass('public.prefs') IS NOT NULL
     AND to_regclass('public.books') IS NOT NULL
-    AND to_regclass('public.reading_logs') IS NOT NULL AS ok`) as { ok: boolean }[];
+    AND to_regclass('public.reading_logs') IS NOT NULL
+    AND to_regclass('public.history_docs') IS NOT NULL
+    AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'kind') AS ok`) as { ok: boolean }[];
   if (check?.ok) return;
 
   await sql`CREATE TABLE IF NOT EXISTS events (
@@ -65,6 +67,15 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     created_at bigint NOT NULL
   )`;
   await sql`CREATE INDEX IF NOT EXISTS reading_logs_day ON reading_logs (day)`;
+  await sql`CREATE TABLE IF NOT EXISTS history_docs (
+    slug text PRIMARY KEY,
+    filename text NOT NULL,
+    raw text NOT NULL,
+    created_at bigint NOT NULL,
+    updated_at bigint NOT NULL
+  )`;
+  // 회사 / 기타 구분 (나중에 추가된 칸)
+  await sql`ALTER TABLE history_docs ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'company'`;
   await sql`CREATE TABLE IF NOT EXISTS prefs (
     key text PRIMARY KEY,
     value jsonb NOT NULL,

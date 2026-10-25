@@ -68,7 +68,10 @@ function EventLine({ ev, onOpen }: { ev: CalendarEvent; onOpen: (ev: CalendarEve
         </span>
         {ev.time && <span className="tabular-nums">{ev.time}</span>}
       </span>
-      <span className="mt-0.5 line-clamp-2 text-[13px] font-medium leading-snug">{ev.title}</span>
+      <span className={`mt-0.5 line-clamp-2 text-[13px] font-medium leading-snug ${ev.done ? "text-ink-3 line-through" : ""}`}>
+        {ev.done && "✓ "}
+        {ev.title}
+      </span>
       {prog && (
         <span className="mt-1 flex items-center gap-1.5">
           <span className="h-1 flex-1 overflow-hidden rounded-full bg-sunken">

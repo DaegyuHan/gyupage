@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllHistory, getHistory, renderMarkdown } from "@/lib/history";
+import { renderMarkdown } from "@/lib/history";
+import { getHistoryMerged } from "@/lib/server/historyDb";
 
-export function generateStaticParams() {
-  return getAllHistory().map((d) => ({ slug: d.slug }));
-}
+// 설정에서 올린 문서(DB)도 열리게 요청마다 그림
+export const dynamic = "force-dynamic";
 
 function decode(s: string) {
   try {
@@ -22,20 +22,20 @@ function longDate(date: string) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const doc = getHistory(decode(slug));
+  const doc = await getHistoryMerged(decode(slug));
   return { title: doc ? `${doc.title} | 규페이지` : "히스토리 | 규페이지" };
 }
 
 export default async function HistoryDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const doc = getHistory(decode(slug));
+  const doc = await getHistoryMerged(decode(slug));
   if (!doc) notFound();
 
   const { html, headings } = renderMarkdown(doc.content);
 
   return (
     <div className="mx-auto max-w-6xl pt-6">
-      <Link href="/history" className="inline-flex items-center gap-2 text-sm font-medium text-ink-2 hover:text-ink">
+      <Link href={doc.kind === "etc" ? "/history?tab=etc" : "/history"} className="inline-flex items-center gap-2 text-sm font-medium text-ink-2 hover:text-ink">
         <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden>
           <path d="M6.5 1 1.5 6l5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

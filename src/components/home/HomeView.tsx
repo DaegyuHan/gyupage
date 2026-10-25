@@ -33,8 +33,9 @@ export default function HomeView() {
   const matches = useHomeMatches();
   const router = useRouter();
 
-  // 할일은 홈에서는 '오늘 꼭 할 일'로 따로 보여줘서 일정 목록에서는 뺌
+  // 오늘 영역은 '오늘 꼭 할 일'이 따로 있어서 할일을 빼고, 주간 일정표에는 할일도 같이 보여줌
   const events = store.events.filter((e) => e.category !== "todo");
+  const weekEvents = store.events;
 
   // 서버(UTC)와 브라우저(KST)의 '오늘'이 달라질 수 있어 화면에 붙은 뒤 바로 그림
   // (예전처럼 일정을 다 받을 때까지 기다리지 않고, 일정 칸만 불러오는 중 표시)
@@ -56,7 +57,7 @@ export default function HomeView() {
         <div className="min-w-0 space-y-12">
           <WeekBoard
             loading={!store.loaded}
-            events={events}
+            events={weekEvents}
             start={today}
             onAdd={(k) => (store.authed ? editor.openNew(k) : router.push("/login?next=/"))}
             onOpen={editor.openEdit}

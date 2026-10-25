@@ -106,7 +106,6 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                 <div
                   key={key}
                   onClick={() => onSelect(key)}
-                  onDoubleClick={() => onAdd(key)}
                   className={`group relative min-h-[96px] cursor-pointer px-0.5 pb-1.5 pt-1.5 transition-colors sm:min-h-[118px] sm:px-1.5 sm:pb-2 ${
                     i < 6 ? "border-r border-line-soft" : ""
                   } ${isSelected ? "bg-accent-soft/60" : "hover:bg-paper/70"}`}
@@ -132,8 +131,8 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                         e.stopPropagation();
                         onAdd(key);
                       }}
-                      // 휴대폰: 칸을 한 번 눌러 고른 날에만 + 가 보임 / 넓은 화면: 마우스를 올리면 보임
-                      className={`${isSelected ? "flex touch-visible" : "hidden sm:flex"} absolute right-0 top-0.5 h-6 w-6 items-center justify-center rounded-full bg-surface/80 text-ink-3 opacity-0 transition-opacity hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 sm:static sm:bg-transparent`}
+                      // 칸을 한 번 눌러 고른 날에만 + 가 보임 (휴대폰·컴퓨터 같음)
+                      className={`${isSelected ? "flex" : "hidden"} absolute right-0 top-0.5 h-6 w-6 items-center justify-center rounded-full bg-surface/80 text-ink-2 transition hover:bg-sunken hover:text-ink sm:static sm:bg-transparent`}
                       aria-label={`${d.getMonth() + 1}월 ${d.getDate()}일에 일정 추가`}
                     >
                       <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
@@ -152,6 +151,8 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                         <button
                           key={ev.id}
                           onClick={(e) => {
+                            // 아직 고르지 않은 날이면 일정 대신 그 날을 먼저 고름 (고른 날에서 누를 때 편집)
+                            if (!isSelected) return;
                             e.stopPropagation();
                             onEventClick(ev);
                           }}
@@ -181,7 +182,17 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                   return (
                     <button
                       key={s.ev.id}
-                      onClick={() => onEventClick(s.ev)}
+                      onClick={(e) => {
+                        // 바가 지나는 날 중 누른 칸을 계산해서, 그 날이 골라져 있지 않으면 먼저 고르기만
+                        const row = e.currentTarget.parentElement!.getBoundingClientRect();
+                        const col = Math.min(6, Math.max(0, Math.floor(((e.clientX - row.left) / row.width) * 7)));
+                        const key = keys[col];
+                        if (key !== selected) {
+                          onSelect(key);
+                          return;
+                        }
+                        onEventClick(s.ev);
+                      }}
                       title={`${s.ev.title} (${s.ev.start} ~ ${s.ev.end})`}
                       className="pointer-events-auto mb-[3px] truncate px-1.5 text-left text-[10.5px] font-semibold leading-[19px] sm:px-2 sm:text-[12px] text-[var(--cat-on)] transition-[filter] hover:brightness-110"
                       style={{

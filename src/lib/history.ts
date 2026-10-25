@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Marked } from "marked";
+import { toKind, type HistoryKind } from "./historyKinds";
 
 /**
  * content/history 폴더의 .md 파일을 읽어서 정리해 주는 모듈.
@@ -26,7 +27,13 @@ export interface HistoryDoc {
   tags: string[];
   excerpt: string;
   content: string;
+  /** 어디서 왔는지: 저장소 파일 / 설정에서 올린 파일(DB) */
+  source?: "file" | "upload";
+  /** 회사 일 / 기타 (개인 프로젝트·공부 등) */
+  kind: HistoryKind;
 }
+
+export * from "./historyKinds";
 
 export interface Heading {
   id: string;
@@ -100,6 +107,7 @@ export function parseDoc(filename: string, raw: string): HistoryDoc {
     tags: Array.isArray(tags) ? tags : tags ? [tags] : [],
     excerpt: (data.summary as string) || makeExcerpt(body),
     content: body,
+    kind: toKind(data.kind ?? data.type ?? data["분류"]),
   };
 }
 
