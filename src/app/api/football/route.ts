@@ -1,3 +1,4 @@
+import { cdn } from "@/lib/server/cache";
 import { NextResponse } from "next/server";
 import { addDays, kstDate } from "@/lib/football/kst";
 import { LEAGUE_MAP } from "@/lib/football/leagues";
@@ -55,5 +56,5 @@ export async function GET() {
     generatedAt: new Date().toISOString(),
     errors: { overseas: overseas.error, domestic: domestic.error },
   };
-  return NextResponse.json(body);
+  return NextResponse.json(body, cdn(60, 300));
 }

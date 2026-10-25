@@ -9,6 +9,8 @@ import { NextResponse } from "next/server";
  * 쿠키에는 "만료시각.서명" 만 들어가서 위조할 수 없어요.
  */
 export const SESSION_COOKIE = "gp_session";
+/** 로그인했다는 표시만 (자바스크립트가 읽을 수 있음, 실제 인증은 SESSION_COOKIE) */
+export const SESSION_HINT = "gp_in";
 export const SESSION_DAYS = 30;
 
 function secret() {

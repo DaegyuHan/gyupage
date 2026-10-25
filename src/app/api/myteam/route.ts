@@ -1,9 +1,10 @@
+import { cdn } from "@/lib/server/cache";
 import { NextResponse } from "next/server";
 import { getMyTeams } from "@/lib/myteam";
 
 export async function GET() {
   try {
-    return NextResponse.json({ teams: await getMyTeams() });
+    return NextResponse.json({ teams: await getMyTeams() }, cdn(180));
   } catch (e) {
     console.error("[myteam]", e);
     const detail = process.env.NODE_ENV === "development" ? String(e) : undefined;

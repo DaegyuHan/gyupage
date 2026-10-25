@@ -38,6 +38,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko" className={bricolage.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* 본문 글꼴: 서버에 미리 연결해 두고 받기 (첫 글자가 빨리 보이게) */}
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css"

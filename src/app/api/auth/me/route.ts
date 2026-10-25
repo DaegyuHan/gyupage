@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { isAuthed } from "@/lib/server/auth";
+import { isAuthed, SESSION_DAYS, SESSION_HINT } from "@/lib/server/auth";
 import { db, hasDb } from "@/lib/server/db";
 
-export async function GET() {
-  // DB 가 설정돼 있으면 연결·표 준비까지 확인 (서버가 켜진 뒤 처음 한 번만 실제로 접속)
-  let dbOk = false;
+/** 로그인 상태 (쿠키만 봐서 빠름). ?check=1 이면 DB 접속까지 확인 */
+export async function GET(req: Request) {
+  const check = new URL(req.url).searchParams.get("check") === "1";
+  let dbOk: boolean | undefined;
   let dbError: string | undefined;
-  if (hasDb()) {
+  if (check && hasDb()) {
+    dbOk = false;
     try {
       await db();
       dbOk = true;
@@ -16,8 +18,19 @@ export async function GET() {
       dbError = String(e).replace(/postgres(ql)?:\/\/[^\s"']+/g, "postgresql://***").slice(0, 200);
     }
   }
-  return NextResponse.json(
-    { authed: await isAuthed(), db: hasDb(), dbOk, dbError, login: !!process.env.APP_PASSWORD },
+  const authed = await isAuthed();
+  const res = NextResponse.json(
+    { authed, db: hasDb(), dbOk, dbError, login: !!process.env.APP_PASSWORD },
     { headers: { "Cache-Control": "no-store" } },
   );
+  // 세션이 끝났으면 '로그인됨' 표시도 지움
+  if (!authed) res.cookies.set(SESSION_HINT, "", { path: "/", maxAge: 0 });
+  else
+    res.cookies.set(SESSION_HINT, "1", {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_DAYS * 86400,
+    });
+  return res;
 }

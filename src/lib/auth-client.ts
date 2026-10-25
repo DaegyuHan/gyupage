@@ -27,11 +27,21 @@ export function refreshAuth() {
   return inflight;
 }
 
+/** 로그인 표시 쿠키가 있으면 서버에 묻기 전에 바로 '로그인됨'으로 시작 (서버 확인은 뒤에서) */
+function hinted() {
+  try {
+    return document.cookie.split("; ").includes("gp_in=1");
+  } catch {
+    return false;
+  }
+}
+
 export function useAuth() {
   const [s, setS] = useState(state);
   useEffect(() => {
     listeners.add(setS);
-    if (state.loading && !inflight) refreshAuth();
+    if (state.loading && hinted()) emit({ authed: true, db: true, loading: false });
+    if (!inflight) refreshAuth();
     else setS(state);
     return () => {
       listeners.delete(setS);

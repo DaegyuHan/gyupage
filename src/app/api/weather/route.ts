@@ -1,3 +1,4 @@
+import { cdn } from "@/lib/server/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_PLACE, getWeather } from "@/lib/weather";
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   const lon = Math.round((num(q.get("lon"), -180, 180) ?? DEFAULT_PLACE.lon) * 100) / 100;
 
   try {
-    return NextResponse.json(await getWeather(lat, lon));
+    return NextResponse.json(await getWeather(lat, lon), cdn(600));
   } catch (e) {
     console.error("[weather]", e);
     return NextResponse.json({ error: "날씨를 불러오지 못했어요." }, { status: 502 });

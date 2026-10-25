@@ -1,9 +1,10 @@
+import { cdn } from "@/lib/server/cache";
 import { NextResponse } from "next/server";
 import { getSteam, SteamSetupError } from "@/lib/games/steam";
 
 export async function GET() {
   try {
-    return NextResponse.json(await getSteam());
+    return NextResponse.json(await getSteam(), cdn(600));
   } catch (e) {
     if (e instanceof SteamSetupError) return NextResponse.json({ setup: true });
     console.error("[steam]", e);

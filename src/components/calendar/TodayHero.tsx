@@ -7,6 +7,8 @@ import type { CalendarEvent } from "@/lib/types";
 interface Props {
   events: CalendarEvent[];
   onOpen: (ev: CalendarEvent) => void;
+  /** 일정을 아직 불러오는 중 */
+  loading?: boolean;
   /** 요일 아래에 넣을 것 (홈: 오늘 꼭 할 일) */
   children?: React.ReactNode;
 }
@@ -23,7 +25,7 @@ function projectProgress(p: CalendarEvent, today: string) {
   return { ratio: done / total, left, started: t >= s };
 }
 
-export default function TodayHero({ events, onOpen, children }: Props) {
+export default function TodayHero({ events, onOpen, loading = false, children }: Props) {
   const today = todayKey();
   const d = fromKey(today);
   const todays = events
@@ -66,7 +68,7 @@ export default function TodayHero({ events, onOpen, children }: Props) {
                   ))}
               </ul>
             ) : (
-              <span className="text-sm text-ink-3">오늘은 잡힌 약속이 없어요</span>
+              <span className="text-sm text-ink-3">{loading ? "일정 불러오는 중…" : "오늘은 잡힌 약속이 없어요"}</span>
             )}
           </div>
         </div>
@@ -75,7 +77,9 @@ export default function TodayHero({ events, onOpen, children }: Props) {
       {/* 진행 중 프로젝트 */}
       <div className="self-end">
         <h2 className="mb-3 text-sm font-semibold text-ink-2">진행 중인 프로젝트</h2>
-        {projects.length === 0 ? (
+        {loading ? (
+          <div className="h-10 rounded-lg bg-sunken/70" aria-busy="true" />
+        ) : projects.length === 0 ? (
           <p className="text-sm text-ink-3">캘린더에 프로젝트 기간을 넣으면 여기서 남은 날짜를 보여줘요.</p>
         ) : (
           <ul className="space-y-3.5">

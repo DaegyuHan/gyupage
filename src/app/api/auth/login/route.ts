@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkPassword, makeSessionToken, SESSION_COOKIE, SESSION_DAYS } from "@/lib/server/auth";
+import { checkPassword, makeSessionToken, SESSION_COOKIE, SESSION_DAYS, SESSION_HINT } from "@/lib/server/auth";
 
 // 비밀번호를 마구 넣어 보는 걸 막는 아주 단순한 속도 제한 (서버 인스턴스 단위)
 const fails: number[] = [];
@@ -20,6 +20,13 @@ export async function POST(req: Request) {
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, makeSessionToken(), {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_DAYS * 86400,
+  });
+  // 화면이 '로그인됐을 것'을 바로 알 수 있게 하는 표시 (값은 1 뿐이라 이걸로는 아무것도 못 함)
+  res.cookies.set(SESSION_HINT, "1", {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",

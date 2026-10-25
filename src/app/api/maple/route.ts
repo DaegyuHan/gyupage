@@ -1,9 +1,10 @@
+import { cdn } from "@/lib/server/cache";
 import { NextResponse } from "next/server";
 import { getMaple, MapleSetupError } from "@/lib/games/maple";
 
 export async function GET() {
   try {
-    return NextResponse.json(await getMaple());
+    return NextResponse.json(await getMaple(), cdn(1800));
   } catch (e) {
     if (e instanceof MapleSetupError) return NextResponse.json({ setup: true }, { status: 200 });
     console.error("[maple]", e);

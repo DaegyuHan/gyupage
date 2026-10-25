@@ -14,6 +14,15 @@ export function hasDb() {
 }
 
 async function ensureSchema(sql: ReturnType<typeof neon>) {
+  // 서버가 깨어날 때마다 표 만들기를 10번 가까이 돌리지 않도록, 표가 다 있으면 쿼리 1번으로 끝
+  const [check] = (await sql`SELECT
+    to_regclass('public.events') IS NOT NULL
+    AND to_regclass('public.todos') IS NOT NULL
+    AND to_regclass('public.prefs') IS NOT NULL
+    AND to_regclass('public.books') IS NOT NULL
+    AND to_regclass('public.reading_logs') IS NOT NULL AS ok`) as { ok: boolean }[];
+  if (check?.ok) return;
+
   await sql`CREATE TABLE IF NOT EXISTS events (
     id text PRIMARY KEY,
     title text NOT NULL,

@@ -21,6 +21,8 @@ interface Props {
   headerExtra?: React.ReactNode;
   /** 응원 팀 경기 (홈에서만) */
   matches?: HomeMatch[];
+  /** 일정을 아직 불러오는 중 */
+  loading?: boolean;
 }
 
 /** 칸 머리에 들어가는 날씨 한 줄 */
@@ -124,7 +126,7 @@ function MatchLine({ m }: { m: HomeMatch }) {
   );
 }
 
-export default function WeekBoard({ events, start, onAdd, onOpen, weather, headerExtra, matches = [] }: Props) {
+export default function WeekBoard({ events, start, onAdd, onOpen, weather, headerExtra, matches = [], loading = false }: Props) {
   const base = fromKey(start);
   const days = Array.from({ length: 7 }, (_, i) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + i));
   const keys = days.map(toKey);
@@ -149,7 +151,7 @@ export default function WeekBoard({ events, start, onAdd, onOpen, weather, heade
           <h2 className="text-2xl font-extrabold tracking-tight">일정</h2>
           <p className="mt-0.5 text-sm text-ink-2">
             {base.getMonth() + 1}월 {base.getDate()}일 – {days[6].getMonth() + 1}월 {days[6].getDate()}일
-            {total > 0 ? `, 일정 ${total}개` : ", 아직 잡힌 일정이 없어요"}
+            {loading ? ", 일정 불러오는 중…" : total > 0 ? `, 일정 ${total}개` : ", 아직 잡힌 일정이 없어요"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">

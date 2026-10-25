@@ -12,6 +12,8 @@ import GamesSection from "@/components/games/GamesSection";
 import ReadingSection from "@/components/books/ReadingSection";
 import MyTeamCard from "@/components/myteam/MyTeamCard";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import LazyMount from "@/components/LazyMount";
 import LegacyImport from "@/components/LegacyImport";
 import SaveError from "@/components/SaveError";
 import { todayKey } from "@/lib/date";
@@ -34,8 +36,11 @@ export default function HomeView() {
   // 할일은 홈에서는 '오늘 꼭 할 일'로 따로 보여줘서 일정 목록에서는 뺌
   const events = store.events.filter((e) => e.category !== "todo");
 
-  // 서버(UTC)와 브라우저(KST)의 '오늘'이 달라질 수 있어 클라이언트에서만 그림
-  if (!store.loaded) return <div className="h-[70vh]" aria-busy="true" />;
+  // 서버(UTC)와 브라우저(KST)의 '오늘'이 달라질 수 있어 화면에 붙은 뒤 바로 그림
+  // (예전처럼 일정을 다 받을 때까지 기다리지 않고, 일정 칸만 불러오는 중 표시)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div className="h-[70vh]" aria-busy="true" />;
 
   const today = todayKey();
 
@@ -43,13 +48,14 @@ export default function HomeView() {
     <>
       <LegacyImport onDone={store.reload} />
       <SaveError message={store.error} />
-      <TodayHero events={events} onOpen={editor.openEdit}>
+      <TodayHero events={events} loading={!store.loaded} onOpen={editor.openEdit}>
         <TodayTodos />
       </TodayHero>
 
       <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-12">
           <WeekBoard
+            loading={!store.loaded}
             events={events}
             start={today}
             onAdd={(k) => (store.authed ? editor.openNew(k) : router.push("/login?next=/"))}
@@ -69,17 +75,31 @@ export default function HomeView() {
             }
           />
           {weather.data && <HourlyWeather hours={weather.data.hours} placeName={weather.placeName} />}
-          <NewsPlaceholder />
-          <CsCard />
-          <GithubCard />
-          <GamesSection />
-          <ReadingSection />
+          <LazyMount minHeight={420}>
+            <NewsPlaceholder />
+          </LazyMount>
+          <LazyMount minHeight={280}>
+            <CsCard />
+          </LazyMount>
+          <LazyMount minHeight={300}>
+            <GithubCard />
+          </LazyMount>
+          <LazyMount minHeight={320}>
+            <GamesSection />
+          </LazyMount>
+          <LazyMount minHeight={200}>
+            <ReadingSection />
+          </LazyMount>
         </div>
         <aside className="space-y-10">
           <MyTeamCard />
           <FootballPanel />
-          <F1Card />
-          <EsportsCard />
+          <LazyMount minHeight={420}>
+            <F1Card />
+          </LazyMount>
+          <LazyMount minHeight={300}>
+            <EsportsCard />
+          </LazyMount>
         </aside>
       </div>
 

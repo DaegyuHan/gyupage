@@ -1,9 +1,10 @@
+import { cdn } from "@/lib/server/cache";
 import { NextResponse } from "next/server";
 import { getLol, LolKeyError, LolSetupError } from "@/lib/games/lol";
 
 export async function GET() {
   try {
-    return NextResponse.json(await getLol());
+    return NextResponse.json(await getLol(), cdn(600));
   } catch (e) {
     if (e instanceof LolSetupError) return NextResponse.json({ setup: true });
     if (e instanceof LolKeyError) {
