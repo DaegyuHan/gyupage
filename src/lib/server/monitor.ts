@@ -15,6 +15,7 @@ export const SOURCES: Record<string, { label: string; hint?: string }> = {
   "football-data": { label: "football-data.org", hint: "무료 분당 10회" },
   espn: { label: "ESPN" },
   naver: { label: "네이버 스포츠" },
+  kleague: { label: "K리그 공식" },
   "open-meteo": { label: "Open-Meteo 날씨" },
   "google-news": { label: "Google 뉴스" },
   f1: { label: "F1 (Jolpica)" },
@@ -37,6 +38,7 @@ const HOSTS: [RegExp, string][] = [
   [/news\.google\.com$/, "google-news"],
   [/(jolpi\.ca|ergast\.com)$/, "f1"],
   [/(github\.com|jogruber\.de)$/, "github"],
+  [/kleague\.com$/, "kleague"],
   [/nexon\.com$/, "nexon"],
   [/(riotgames\.com|leagueoflegends\.com)$/, "riot"],
   [/steampowered\.com$/, "steam"],
@@ -210,7 +212,7 @@ export async function mfetch(input: string | URL, init?: RequestInit & { next?: 
   try {
     res = await fetch(input, init);
   } catch (e) {
-    const message = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    const message = `${describe(e)} · ${safePath(url)}`;
     record(source, { ok: false, status: 0, error: message, alert: { status: 0, message } });
     throw e;
   }
@@ -237,6 +239,35 @@ export async function mfetch(input: string | URL, init?: RequestInit & { next?: 
 /** 200 으로 왔지만 내용이 에러인 경우 (API-Football 한도 초과 등) */
 export function reportApiError(source: string, message: string, status = 200) {
   record(source, { ok: false, error: message, alert: { status, message } });
+}
+
+/**
+ * "TypeError: fetch failed" 만으로는 왜인지 몰라서, 안쪽 원인(cause)까지 꺼냄
+ * 예) fetch failed ← ECONNRESET (연결이 끊김) / UND_ERR_CONNECT_TIMEOUT (연결 시간 초과) / ENOTFOUND (주소 못 찾음)
+ */
+const CAUSE_KO: Record<string, string> = {
+  ECONNRESET: "상대 서버가 연결을 끊음 (서버 IP 차단일 가능성)",
+  ECONNREFUSED: "상대 서버가 연결을 거절함",
+  ETIMEDOUT: "연결 시간 초과",
+  UND_ERR_CONNECT_TIMEOUT: "연결 시간 초과 (서버 IP 차단일 가능성)",
+  UND_ERR_HEADERS_TIMEOUT: "응답이 너무 늦음",
+  UND_ERR_SOCKET: "연결이 중간에 끊김",
+  ENOTFOUND: "주소(DNS)를 못 찾음",
+  EAI_AGAIN: "DNS 조회 실패",
+  CERT_HAS_EXPIRED: "상대 인증서 만료",
+};
+function describe(e: unknown): string {
+  if (!(e instanceof Error)) return String(e);
+  if (e.name === "TimeoutError" || e.name === "AbortError") return "시간 초과 (응답 없음)";
+  const parts = [`${e.name}: ${e.message}`];
+  let c = (e as { cause?: unknown }).cause;
+  for (let i = 0; c && i < 3; i++) {
+    const err = c as { code?: string; message?: string; cause?: unknown };
+    const code = err.code ?? "";
+    parts.push(`← ${code ? `${code} ` : ""}${err.message ?? ""}`.trim() + (CAUSE_KO[code] ? ` (${CAUSE_KO[code]})` : ""));
+    c = err.cause;
+  }
+  return parts.join(" ").slice(0, 300);
 }
 
 /** 주소에서 키·토큰 같은 값은 빼고 경로만 */

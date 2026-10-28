@@ -10,6 +10,7 @@ import { cached } from "./apiFootball";
 import { currentSeason } from "./leagues";
 import type { LeagueId } from "./types";
 import { mfetch } from "@/lib/server/monitor";
+import { kleagueRank } from "./kleague";
 
 export type Zone = "top" | "second" | "third" | "playoff" | "relegation" | null;
 
@@ -62,7 +63,7 @@ const TTL = 60 * 30;
 const UA = { "User-Agent": "Mozilla/5.0 (gyupage personal dashboard)" };
 
 async function getJson<T>(url: string, headers: Record<string, string> = {}): Promise<T> {
-  const res = await mfetch(url, { cache: "no-store", headers: { ...UA, ...headers } });
+  const res = await mfetch(url, { cache: "no-store", headers: { ...UA, ...headers }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
   return (await res.json()) as T;
 }
@@ -206,7 +207,10 @@ async function espnScorers(league: LeagueId): Promise<Scorer[]> {
 /* ───────── K리그: 네이버 스포츠 ───────── */
 
 const NAVER = "https://api-gw.sports.naver.com/statistics/categories";
-const NAVER_HEADERS = { Referer: "https://m.sports.naver.com/" };
+const NAVER_HEADERS = {
+  Referer: "https://m.sports.naver.com/",
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+};
 const NAVER_CAT: Partial<Record<LeagueId, string>> = { K1: "kleague", K2: "kleague2" };
 
 /** K리그 공식 엠블럼 (네이버 팀 id 와 번호 체계가 같음) */
@@ -307,8 +311,22 @@ async function naverScorers(league: LeagueId, season: number): Promise<Scorer[]>
 
 /* ───────── 공개 함수 ───────── */
 
-const standingsCached = cached("standings-v2", TTL, async (league: LeagueId, season: number) =>
-  NAVER_CAT[league] ? naverStandings(league, season) : espnStandings(league, season),
+/** 네이버가 서버에서 막히면 K리그 공식 사이트 순위로 */
+async function kleagueStandings(league: LeagueId, season: number): Promise<Standings> {
+  const rows = await kleagueRank(league === "K1" ? 1 : 2, season);
+  if (!rows.length) throw new Error("kleague.com 순위 없음");
+  return {
+    league,
+    season,
+    groups: [{ rows: rows.map((r) => ({ ...r, team: r.teamName, logo: kEmblem(r.teamId), zone: null })).sort((a, b) => a.rank - b.rank) }],
+    legend: [],
+    hasForm: rows.some((r) => r.form.length > 0),
+    source: "K리그 공식",
+  };
+}
+
+const standingsCached = cached("standings-v3", TTL, async (league: LeagueId, season: number) =>
+  NAVER_CAT[league] ? naverStandings(league, season).catch(() => kleagueStandings(league, season)) : espnStandings(league, season),
 );
 const scorersCached = cached("scorers-v2", TTL, async (league: LeagueId, season: number) =>
   NAVER_CAT[league] ? naverScorers(league, season) : espnScorers(league),
