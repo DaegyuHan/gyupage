@@ -153,30 +153,8 @@ const ymd = (ms: number) => new Date(ms + 9 * 3600_000).toISOString().slice(0, 1
 async function fromNaver(code: string) {
   const from = ymd(Date.now() - 70 * 86400_000);
   const to = ymd(Date.now() + 40 * 86400_000);
-  // 승격·강등에 상관없이 찾도록 1·2부 둘 다. 네이버가 서버에서 막히면 K리그 공식 사이트로
-  let lists: NaverGame[][];
-  try {
-    lists = await Promise.all(
-      ["kleague", "kleague2"].map(async (cat) => {
-        const res = await mfetch(
-          `https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=${cat}&fromDate=${from}&toDate=${to}&size=500`,
-          {
-            headers: {
-              Referer: "https://m.sports.naver.com/",
-              "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-              Accept: "application/json",
-            },
-            cache: "no-store",
-            signal: AbortSignal.timeout(6000),
-          },
-        );
-        if (!res.ok) throw new Error(`naver ${res.status}`);
-        return ((await res.json()) as { result?: { games?: NaverGame[] } }).result?.games ?? [];
-      }),
-    );
-  } catch {
-    lists = [await kleagueGames(from, to)];
-  }
+  // 승격·강등에 상관없이 찾도록 1·2부 둘 다 (K리그 공식 사이트)
+  const lists: NaverGame[][] = [await kleagueGames(from, to)];
   let logo: string | undefined;
   const matches = lists
     .flat()

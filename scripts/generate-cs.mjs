@@ -91,21 +91,66 @@ function buildPrompt(category, previous) {
 지난 주제
 ${prevList}
 
-출력은 아래 JSON 하나만. 설명이나 코드펜스 없이.
-{
-  "title": "질문형이나 호기심을 끄는 제목 (40자 이내)",
-  "summary": "...",
-  "minutes": 4,
-  "keywords": ["...", "..."],
-  "body": "## ...\\n...",
-  "practice": "- ...\\n- ...\\n- ...",
-  "interview": {
-    "question": "...",
-    "answer": "...",
-    "followUps": [{ "question": "...", "answer": "..." }, { "question": "...", "answer": "..." }]
+다 쓰면 save_note 도구로 제출해. (body·practice 는 마크다운 문자열 그대로, 코드블록도 그대로 넣으면 돼)`;
+}
+
+/**
+ * 글은 '도구 호출' 형태로 받음 → API 가 JSON 구조를 보장해 줘서
+ * 본문에 Java 코드(따옴표·줄바꿈)가 들어가도 JSON 이 깨지지 않음
+ */
+const STR = { type: "string" };
+// 중첩 객체를 문자열로 뭉쳐 보내는 일이 있어서, 모든 칸을 맨 위 한 단계로 펼쳐서 받음
+const NOTE_TOOL = {
+  name: "save_note",
+  description: "완성한 CS 글을 저장한다. 모든 칸을 각각 채운다.",
+  input_schema: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "질문형이나 호기심을 끄는 제목 (40자 이내)" },
+      summary: { type: "string", description: "홈 카드용 2~3문장 요약 (150자 안팎)" },
+      minutes: { type: "integer", description: "읽는 데 걸리는 분 (3~6)" },
+      keywords: { type: "array", items: STR, description: "같이 찾아보면 좋은 키워드 4~6개" },
+      body: { type: "string", description: "본문 마크다운 (## 소제목 2~4개, 필요하면 ```java 코드블록)" },
+      practice: { type: "string", description: "실무 상황 3개, '- ' 목록 마크다운" },
+      interview_question: { type: "string", description: "이직 면접에서 실제로 받을 법한 질문" },
+      interview_answer: { type: "string", description: "모범 답안 4~6문장, 결론 먼저" },
+      followup1_question: { type: "string", description: "면접관의 꼬리 질문 1" },
+      followup1_answer: { type: "string", description: "꼬리 질문 1 모범 답안 2~4문장" },
+      followup2_question: { type: "string", description: "면접관의 꼬리 질문 2" },
+      followup2_answer: { type: "string", description: "꼬리 질문 2 모범 답안 2~4문장" },
+      quiz_question: { type: "string", description: "객관식 문제" },
+      quiz_options: { type: "array", items: STR, description: "보기 4개" },
+      quiz_answer: { type: "integer", description: "정답 보기의 0부터 시작하는 번호" },
+      quiz_explain: { type: "string", description: "정답 해설" },
+    },
+    required: [
+      "title", "summary", "minutes", "keywords", "body", "practice",
+      "interview_question", "interview_answer", "followup1_question", "followup1_answer", "followup2_question", "followup2_answer",
+      "quiz_question", "quiz_options", "quiz_answer", "quiz_explain",
+    ],
   },
-  "quiz": { "question": "...", "options": ["...", "...", "...", "..."], "answer": 0, "explain": "..." }
-}`;
+};
+
+/** 펼쳐 받은 칸 → 글 파일에 쓰는 모양 */
+function assemble(x) {
+  const arr = (v) => (Array.isArray(v) ? v : typeof v === "string" ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [v]; } catch { return v.split(/\n|,\s*/).filter(Boolean); } })() : []);
+  return {
+    title: x.title,
+    summary: x.summary,
+    minutes: x.minutes,
+    keywords: arr(x.keywords),
+    body: x.body,
+    practice: x.practice,
+    interview: {
+      question: x.interview_question,
+      answer: x.interview_answer,
+      followUps: [
+        { question: x.followup1_question, answer: x.followup1_answer },
+        { question: x.followup2_question, answer: x.followup2_answer },
+      ],
+    },
+    quiz: { question: x.quiz_question, options: arr(x.quiz_options), answer: Number(x.quiz_answer), explain: x.quiz_explain },
+  };
 }
 
 async function callClaude(prompt) {
@@ -114,37 +159,36 @@ async function callClaude(prompt) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 6000,
+      // 이 모델은 도구 강제(tool_choice: tool)를 안 받아서 auto — 프롬프트에서 save_note 로 내라고 함
+      tools: [NOTE_TOOL],
+      messages: [{ role: "user", content: prompt }],
+    }),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`Claude API ${res.status}: ${text.slice(0, 300)}`);
   const j = JSON.parse(text);
-  return j.content.filter((c) => c.type === "text").map((c) => c.text).join("");
-}
-
-function extractJson(text) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end < start) throw new Error("JSON 을 찾지 못했어요");
-  return JSON.parse(text.slice(start, end + 1));
+  const call = j.content.find((c) => c.type === "tool_use" && c.name === "save_note");
+  if (!call) throw new Error(`도구 호출이 없어요 (stop_reason: ${j.stop_reason})`);
+  if (j.stop_reason === "max_tokens") throw new Error("글이 너무 길어서 잘렸어요");
+  return assemble(call.input);
 }
 
 function validate(n) {
-  const ok =
-    typeof n.title === "string" &&
-    typeof n.summary === "string" &&
-    typeof n.body === "string" &&
-    typeof n.practice === "string" &&
-    n.interview?.question &&
-    n.interview?.answer &&
-    n.quiz?.question &&
-    Array.isArray(n.quiz?.options) &&
-    n.quiz.options.length >= 2 &&
-    Number.isInteger(n.quiz?.answer) &&
-    n.quiz.answer >= 0 &&
-    n.quiz.answer < n.quiz.options.length &&
-    Array.isArray(n.keywords);
-  if (!ok) throw new Error("필요한 항목이 빠졌어요");
+  const bad = [];
+  if (typeof n.title !== "string" || !n.title.trim()) bad.push("title");
+  if (typeof n.summary !== "string") bad.push("summary");
+  if (typeof n.body !== "string") bad.push("body");
+  if (typeof n.practice !== "string") bad.push("practice");
+  if (!n.interview?.question || !n.interview?.answer) bad.push(`interview(${typeof n.interview})`);
+  if (!n.quiz?.question || !Array.isArray(n.quiz?.options) || n.quiz.options.length < 2) bad.push("quiz");
+  // 정답 번호가 "2" 처럼 문자열로 와도 받아 줌
+  if (n.quiz && typeof n.quiz.answer === "string" && /^\d+$/.test(n.quiz.answer)) n.quiz.answer = Number(n.quiz.answer);
+  if (!Number.isInteger(n.quiz?.answer) || n.quiz.answer < 0 || n.quiz.answer >= (n.quiz?.options?.length ?? 0)) bad.push("quiz.answer");
+  if (!Array.isArray(n.keywords)) bad.push("keywords");
+  if (bad.length) throw new Error(`필요한 항목이 빠졌어요: ${bad.join(", ")}`);
   // 꼬리 질문은 있으면 정리, 없어도 됨
   const f = Array.isArray(n.interview.followUps) ? n.interview.followUps : [];
   n.interview.followUps = f.filter((x) => x && x.question && x.answer).slice(0, 3);
@@ -196,7 +240,7 @@ async function main() {
   let lastErr;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const note = validate(extractJson(await callClaude(prompt)));
+      const note = validate(await callClaude(prompt));
       fs.writeFileSync(file, toMarkdown(date, no, category, note), "utf8");
       console.log(`✓ ${date} No.${no} [${CATEGORIES[category]}] ${note.title}`);
       return;

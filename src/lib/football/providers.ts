@@ -125,30 +125,8 @@ function normK(name: string) {
   return alias[n] ?? n;
 }
 
-const NAVER_HEADERS = {
-  Referer: "https://m.sports.naver.com/",
-  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-  Accept: "application/json",
-};
-
-/** 네이버가 서버에서 막히면(연결 실패) K리그 공식 사이트로 */
-const naverK = cached("naver-k-v2", 60, async (from: string, to: string): Promise<NaverGame[]> => {
-  try {
-    const lists = await Promise.all(
-      ["kleague", "kleague2"].map(async (cat) => {
-        const res = await mfetch(
-          `https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=${cat}&fromDate=${from}&toDate=${to}&size=200`,
-          { headers: NAVER_HEADERS, cache: "no-store", signal: AbortSignal.timeout(6000) },
-        );
-        if (!res.ok) throw new Error(`naver ${res.status}`);
-        return ((await res.json()) as { result?: { games?: NaverGame[] } }).result?.games ?? [];
-      }),
-    );
-    return lists.flat();
-  } catch {
-    return kleagueGames(from, to);
-  }
-});
+/** K리그 일정·점수: K리그 공식 사이트 (1분 캐시) */
+const naverK = (from: string, to: string): Promise<NaverGame[]> => kleagueGames(from, to);
 
 function minuteFrom(info?: string) {
   const m = info?.match(/(\d+)/);

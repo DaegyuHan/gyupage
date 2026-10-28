@@ -10,7 +10,7 @@ import { cached } from "./apiFootball";
 import { currentSeason } from "./leagues";
 import type { LeagueId } from "./types";
 import { mfetch } from "@/lib/server/monitor";
-import { kleagueRank } from "./kleague";
+import { kleagueRank, kleagueScorers } from "./kleague";
 
 export type Zone = "top" | "second" | "third" | "playoff" | "relegation" | null;
 
@@ -204,116 +204,14 @@ async function espnScorers(league: LeagueId): Promise<Scorer[]> {
   });
 }
 
-/* ───────── K리그: 네이버 스포츠 ───────── */
+/* ───────── K리그: K리그 공식 사이트 ───────── */
 
-const NAVER = "https://api-gw.sports.naver.com/statistics/categories";
-const NAVER_HEADERS = {
-  Referer: "https://m.sports.naver.com/",
-  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-};
-const NAVER_CAT: Partial<Record<LeagueId, string>> = { K1: "kleague", K2: "kleague2" };
-
-/** K리그 공식 엠블럼 (네이버 팀 id 와 번호 체계가 같음) */
+/** K리그 공식 엠블럼 */
 const kEmblem = (teamId: string) => `https://www.kleague.com/assets/images/emblem/emblem_K${teamId}.png`;
+const K_LEAGUE: Partial<Record<LeagueId, number>> = { K1: 1, K2: 2 };
 
-interface NaverTeams {
-  result: {
-    seasonTeamStats: {
-      teamId: string;
-      teamName: string;
-      group: string | null;
-      rank: number;
-      lastFiveGames: string | null;
-      matchesPlayed: number;
-      wins: number;
-      draws: number;
-      losses: number;
-      goals: number;
-      goalsConceded: number;
-      goalsDifference: number;
-      points: number;
-    }[];
-  };
-}
-
-async function naverStandings(league: LeagueId, season: number): Promise<Standings> {
-  const j = await getJson<NaverTeams>(`${NAVER}/${NAVER_CAT[league]}/seasons/${season}/teams`, NAVER_HEADERS);
-  const byGroup = new Map<string, StandingRow[]>();
-  for (const t of j.result.seasonTeamStats) {
-    const key = t.group ?? "";
-    if (!byGroup.has(key)) byGroup.set(key, []);
-    byGroup.get(key)!.push({
-      rank: t.rank,
-      teamId: t.teamId,
-      team: t.teamName,
-      logo: kEmblem(t.teamId),
-      played: t.matchesPlayed,
-      win: t.wins,
-      draw: t.draws,
-      lose: t.losses,
-      gf: t.goals,
-      ga: t.goalsConceded,
-      gd: t.goalsDifference,
-      points: t.points,
-      // 네이버는 최근 경기가 왼쪽 → 뒤집어서 오른쪽이 최근
-      form: (t.lastFiveGames ?? "")
-        .split("")
-        .filter((x): x is "W" | "D" | "L" => x === "W" || x === "D" || x === "L")
-        .reverse(),
-      zone: null,
-    });
-  }
-  const groups = [...byGroup.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, rows]) => ({ name: name || undefined, rows: rows.sort((a, b) => a.rank - b.rank) }));
-  return { league, season, groups, legend: [], hasForm: true, source: "네이버 스포츠" };
-}
-
-interface NaverTop {
-  result: {
-    topPlayers: {
-      type: string;
-      ranks: {
-        rank: number;
-        playerName: string;
-        teamId: string;
-        teamName: string;
-        goals: number;
-        assists: number;
-        profile?: string | null;
-      }[];
-    }[];
-  };
-}
-
-async function naverScorers(league: LeagueId, season: number): Promise<Scorer[]> {
-  const j = await getJson<NaverTop>(`${NAVER}/${NAVER_CAT[league]}/seasons/${season}/top-players`, NAVER_HEADERS);
-  const goals = j.result.topPlayers.find((t) => t.type === "goals")?.ranks ?? [];
-  return goals.slice(0, 15).map((p) => {
-    let photo: string | undefined;
-    try {
-      photo = p.profile ? (JSON.parse(p.profile) as { image?: string }).image : undefined;
-    } catch {
-      photo = undefined;
-    }
-    return {
-      rank: p.rank,
-      name: p.playerName,
-      photo,
-      team: p.teamName,
-      teamLogo: kEmblem(p.teamId),
-      goals: p.goals,
-      assists: p.assists,
-      apps: 0,
-    };
-  });
-}
-
-/* ───────── 공개 함수 ───────── */
-
-/** 네이버가 서버에서 막히면 K리그 공식 사이트 순위로 */
 async function kleagueStandings(league: LeagueId, season: number): Promise<Standings> {
-  const rows = await kleagueRank(league === "K1" ? 1 : 2, season);
+  const rows = await kleagueRank(K_LEAGUE[league]!, season);
   if (!rows.length) throw new Error("kleague.com 순위 없음");
   return {
     league,
@@ -325,11 +223,18 @@ async function kleagueStandings(league: LeagueId, season: number): Promise<Stand
   };
 }
 
-const standingsCached = cached("standings-v3", TTL, async (league: LeagueId, season: number) =>
-  NAVER_CAT[league] ? naverStandings(league, season).catch(() => kleagueStandings(league, season)) : espnStandings(league, season),
+async function kleagueTopScorers(league: LeagueId, season: number): Promise<Scorer[]> {
+  const list = await kleagueScorers(K_LEAGUE[league]!, season);
+  return list.slice(0, 15).map((p) => ({ rank: p.rank, name: p.name, team: p.teamName, teamLogo: kEmblem(p.teamId), goals: p.goals, assists: p.assists, apps: p.apps }));
+}
+
+/* ───────── 공개 함수 ───────── */
+
+const standingsCached = cached("standings-v4", TTL, async (league: LeagueId, season: number) =>
+  K_LEAGUE[league] ? kleagueStandings(league, season) : espnStandings(league, season),
 );
-const scorersCached = cached("scorers-v2", TTL, async (league: LeagueId, season: number) =>
-  NAVER_CAT[league] ? naverScorers(league, season) : espnScorers(league),
+const scorersCached = cached("scorers-v3", TTL, async (league: LeagueId, season: number) =>
+  K_LEAGUE[league] ? kleagueTopScorers(league, season) : espnScorers(league),
 );
 
 export function getStandings(league: LeagueId) {

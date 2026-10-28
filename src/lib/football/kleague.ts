@@ -1,5 +1,6 @@
 /**
- * K리그 공식 사이트(kleague.com) 데이터 — 네이버 스포츠가 서버에서 막힐 때 쓰는 예비 소스
+ * K리그 공식 사이트(kleague.com) 데이터 — K리그 일정·점수·순위·득점의 유일한 소스
+ * (네이버 스포츠는 Vercel 서버에서 연결이 안 돼서 2026-10 부터 안 씀)
  * 키·한도 없음. 일정은 '리그 × 월' 단위로 받아요.
  *   POST /getScheduleList.do  {year, month, leagueId, teamId:""}   (JSON)
  *   POST /record/teamRank.do  leagueId=&year=&stadium=all          (폼)
@@ -171,4 +172,42 @@ export const kleagueRank = cached("kl-rank-v1", 60 * 30, async (league: number, 
       .filter((x): x is "W" | "D" | "L" => !!x)
       .reverse(),
   }));
+});
+
+/* ───────── 득점 순위 ───────── */
+
+export interface KScorer {
+  rank: number;
+  name: string;
+  teamId: string;
+  teamName: string;
+  goals: number;
+  assists: number;
+  apps: number;
+}
+
+interface KlPlayer {
+  rank: number;
+  name: string;
+  teamId: string;
+  teamName: string;
+  goalQty: number | null;
+  assistQty: number | null;
+  gameQty: number | null;
+}
+
+export const kleagueScorers = cached("kl-scorers-v1", 60 * 30, async (league: number, year: number): Promise<KScorer[]> => {
+  const data = await post<{ list?: KlPlayer[] }>("/record/rankSort.do", JSON.stringify({ year: String(year), leagueId: String(league), recordType: "GOAL" }));
+  return (data.list ?? [])
+    .filter((p) => (p.goalQty ?? 0) > 0)
+    .sort((a, b) => a.rank - b.rank)
+    .map((p) => ({
+      rank: p.rank,
+      name: p.name,
+      teamId: code(p.teamId),
+      teamName: p.teamName,
+      goals: p.goalQty ?? 0,
+      assists: p.assistQty ?? 0,
+      apps: p.gameQty ?? 0,
+    }));
 });
