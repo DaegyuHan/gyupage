@@ -26,7 +26,9 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     AND to_regclass('public.api_usage_hourly') IS NOT NULL
     AND to_regclass('public.notify_log') IS NOT NULL
     AND to_regclass('public.push_subs') IS NOT NULL
-    AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'kind') AS ok`) as { ok: boolean }[];
+    AND to_regclass('public.history_projects') IS NOT NULL
+    AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'kind')
+    AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'project_id') AS ok`) as { ok: boolean }[];
   if (check?.ok) return;
 
   await sql`CREATE TABLE IF NOT EXISTS events (
@@ -80,6 +82,20 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
   )`;
   // 회사 / 기타 구분 (나중에 추가된 칸)
   await sql`ALTER TABLE history_docs ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'company'`;
+  // 회사 안의 세부 프로젝트 (예: 등록금 프로젝트) + 프로젝트별 AI 통합 요약
+  await sql`CREATE TABLE IF NOT EXISTS history_projects (
+    id text PRIMARY KEY,
+    name text NOT NULL,
+    kind text NOT NULL DEFAULT 'company',
+    position int NOT NULL DEFAULT 0,
+    summary text,
+    summary_at bigint,
+    summary_hash text,
+    created_at bigint NOT NULL,
+    updated_at bigint NOT NULL
+  )`;
+  await sql`ALTER TABLE history_docs ADD COLUMN IF NOT EXISTS project_id text`;
+  await sql`CREATE INDEX IF NOT EXISTS history_docs_project ON history_docs (project_id)`;
   // 외부 API 사용량 (하루·출처별) — 디스코드 리포트용
   await sql`CREATE TABLE IF NOT EXISTS api_usage (
     day text NOT NULL,

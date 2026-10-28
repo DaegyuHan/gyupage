@@ -35,11 +35,14 @@ export default async function HistoryDetail({ params }: { params: Promise<{ slug
 
   return (
     <div className="mx-auto max-w-6xl pt-6">
-      <Link href={doc.kind === "etc" ? "/history?tab=etc" : "/history"} className="inline-flex items-center gap-2 text-sm font-medium text-ink-2 hover:text-ink">
+      <Link
+        href={doc.projectId ? `/history?project=${doc.projectId}` : doc.kind === "etc" ? "/history?tab=etc" : "/history"}
+        className="inline-flex items-center gap-2 text-sm font-medium text-ink-2 hover:text-ink"
+      >
         <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden>
           <path d="M6.5 1 1.5 6l5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        히스토리
+        {doc.projectId ? "프로젝트로" : "히스토리"}
       </Link>
 
       <header className="mt-8 max-w-3xl">

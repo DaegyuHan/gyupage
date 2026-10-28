@@ -11,7 +11,7 @@ export async function GET() {
   return guarded(async () => {
     const docs = await listUploaded();
     return NextResponse.json({
-      docs: docs.map(({ slug, title, date, company, tags, filename, updatedAt, kind }) => ({ slug, title, date, company, tags, filename, updatedAt, kind })),
+      docs: docs.map(({ slug, title, date, company, tags, filename, updatedAt, kind, projectId }) => ({ slug, title, date, company, tags, filename, updatedAt, kind, projectId: projectId ?? null })),
     });
   });
 }
@@ -23,12 +23,26 @@ export async function GET() {
  */
 export async function POST(req: Request) {
   return guarded(async () => {
-    const body = (await req.json()) as { files?: { name?: string; content?: string }[]; kind?: string };
+    const body = (await req.json()) as { files?: { name?: string; content?: string }[]; kind?: string; projectId?: string | null };
     const kind = toKind(body.kind);
-    const files = (body.files ?? []).slice(0, 20);
+    const sql0 = await db();
+    // 프로젝트에 넣으면 구분은 그 프로젝트를 따라감
+    let projectId: string | null = null;
+    let projectKind = kind;
+    if (typeof body.projectId === "string" && body.projectId) {
+      const p = (await sql0`SELECT id, kind FROM history_projects WHERE id = ${body.projectId}`) as { id: string; kind: string }[];
+      if (!p[0]) return NextResponse.json({ error: "없는 프로젝트예요" }, { status: 404 });
+      projectId = p[0].id;
+      projectKind = toKind(p[0].kind);
+    }
+    // 프로젝트에 올릴 때는 파일 하나만 (프로젝트마다 최신 문서 1개 유지)
+    const files = (body.files ?? []).slice(0, projectId ? 1 : 20);
     const sql = await db();
     const fileSlugs = new Set(getAllHistory().map((d) => d.slug));
     const results: { name: string; ok: boolean; slug?: string; title?: string; date?: string; error?: string; replaced?: boolean }[] = [];
+    for (const extra of (body.files ?? []).slice(projectId ? 1 : 20)) {
+      results.push({ name: extra.name ?? "", ok: false, error: projectId ? "프로젝트에는 파일 하나만 올려요 (첫 파일만 올렸어요)" : "한 번에 20개까지예요" });
+    }
 
     for (const f of files) {
       const name = (f.name ?? "").trim().split(/[\\/]/).pop() ?? "";
@@ -52,7 +66,8 @@ export async function POST(req: Request) {
       // 같은 파일 이름이면 덮어쓰기
       const same = (await sql`SELECT slug FROM history_docs WHERE filename = ${filename}`) as { slug: string }[];
       if (same[0]) {
-        await sql`UPDATE history_docs SET raw = ${content}, kind = ${kind}, updated_at = ${now} WHERE slug = ${same[0].slug}`;
+        await sql`UPDATE history_docs SET raw = ${content}, kind = ${projectKind}, project_id = ${projectId}, updated_at = ${now} WHERE slug = ${same[0].slug}`;
+        if (projectId) await sql`DELETE FROM history_docs WHERE project_id = ${projectId} AND slug <> ${same[0].slug}`;
         results.push({ name, ok: true, slug: same[0].slug, title: doc.title, date: doc.date, replaced: true });
         continue;
       }
@@ -63,9 +78,11 @@ export async function POST(req: Request) {
         if (!taken) break;
         slug = `${doc.slug.slice(0, 110)}-${i}`;
       }
-      await sql`INSERT INTO history_docs (slug, filename, raw, kind, created_at, updated_at) VALUES (${slug}, ${filename}, ${content}, ${kind}, ${now}, ${now})`;
-      results.push({ name, ok: true, slug, title: doc.title, date: doc.date });
+      // 프로젝트의 예전 문서는 지우고 새 문서로 바꿔 끼움
+      const replaced = projectId ? ((await sql`DELETE FROM history_docs WHERE project_id = ${projectId} RETURNING slug`) as unknown[]).length > 0 : false;
+      await sql`INSERT INTO history_docs (slug, filename, raw, kind, project_id, created_at, updated_at) VALUES (${slug}, ${filename}, ${content}, ${projectKind}, ${projectId}, ${now}, ${now})`;
+      results.push({ name, ok: true, slug, title: doc.title, date: doc.date, replaced });
     }
-    return NextResponse.json({ results });
+    return NextResponse.json({ results, projectId });
   });
 }

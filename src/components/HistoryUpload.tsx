@@ -14,6 +14,13 @@ interface Uploaded {
   filename: string;
   updatedAt: number;
   kind: HistoryKind;
+  projectId: string | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  docCount: number;
 }
 
 interface Result {
@@ -56,6 +63,8 @@ export default function HistoryUpload() {
   const [results, setResults] = useState<Result[]>([]);
   const [showTemplate, setShowTemplate] = useState(false);
   const [kind, setKind] = useState<HistoryKind>("company");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
   const depth = useRef(0);
 
@@ -65,6 +74,24 @@ export default function HistoryUpload() {
       .catch(() => setDocs([]));
   }, []);
   useEffect(reload, [reload]);
+  const loadProjects = useCallback(() => {
+    api<{ projects: Project[] }>("/api/history/projects?kind=company")
+      .then((j) => setProjects(j.projects))
+      .catch(() => {});
+  }, []);
+  useEffect(loadProjects, [loadProjects]);
+
+  const newProject = async () => {
+    const name = prompt("새 프로젝트 이름 (예: 등록금 프로젝트)");
+    if (!name?.trim()) return;
+    try {
+      const { id } = await api<{ id: string }>("/api/history/projects", { method: "POST", body: { name, kind: "company" } });
+      loadProjects();
+      setProjectId(id);
+    } catch (e) {
+      alert(String(e).replace(/^Error: /, ""));
+    }
+  };
 
   const upload = async (list: FileList | File[]) => {
     const files = [...list].filter((f) => /\.(md|markdown)$/i.test(f.name));
@@ -76,7 +103,7 @@ export default function HistoryUpload() {
     setBusy(true);
     try {
       const payload = await Promise.all(files.map(async (f) => ({ name: f.name, content: await f.text() })));
-      const j = await api<{ results: Result[] }>("/api/history", { method: "POST", body: { files: payload, kind } });
+      const j = await api<{ results: Result[] }>("/api/history", { method: "POST", body: { files: payload, kind, projectId: kind === "company" && projectId ? projectId : null } });
       setResults([...j.results, ...skipped]);
       reload();
     } catch (e) {
@@ -89,6 +116,13 @@ export default function HistoryUpload() {
   const changeKind = async (d: Uploaded, k: HistoryKind) => {
     setDocs((list) => list?.map((x) => (x.slug === d.slug ? { ...x, kind: k } : x)) ?? null);
     await api(`/api/history/${encodeURIComponent(d.slug)}`, { method: "PATCH", body: { kind: k } }).catch(() => reload());
+  };
+
+  const changeProject = async (d: Uploaded, pid: string) => {
+    setDocs((list) => list?.map((x) => (x.slug === d.slug ? { ...x, projectId: pid || null } : x)) ?? null);
+    // 프로젝트에는 문서 하나만이라 원래 있던 문서가 빠질 수 있어서 다시 불러옴
+    await api(`/api/history/${encodeURIComponent(d.slug)}`, { method: "PATCH", body: { projectId: pid || null } }).catch(() => {});
+    reload();
   };
 
   const remove = async (d: Uploaded) => {
@@ -129,6 +163,31 @@ export default function HistoryUpload() {
             </div>
             <span className="text-xs text-ink-3">{kind === "company" ? "회사에서 한 일" : "개인 프로젝트·공부 등"}</span>
           </div>
+          {kind === "company" && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-ink-2">프로젝트</span>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm font-semibold"
+              >
+                <option value="">없음</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <button type="button" onClick={newProject} className="text-xs font-semibold text-accent hover:underline">
+                + 새 프로젝트
+              </button>
+            </div>
+          )}
+          {kind === "company" && projectId && (
+            <p className="rounded-xl bg-accent-soft/60 px-3 py-2 text-xs leading-relaxed text-ink-2">
+              프로젝트에는 <b>최신 md 하나</b>만 보여요. 새로 올리면 이전 문서는 지워지고 바뀌어요. (한 번에 파일 하나)
+            </p>
+          )}
 
           {/* 끌어다 놓는 곳 (눌러서 고르기도 됨) */}
           <button
@@ -160,15 +219,17 @@ export default function HistoryUpload() {
               <path d="M14 3v5h5M12 17v-6M9.5 13.5 12 11l2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="text-[15px] font-bold">
-              {busy ? "올리는 중…" : drag ? "여기에 놓으세요" : `md 파일을 끌어다 놓기 → ${kind === "company" ? "회사" : "기타"}`}
+              {busy ? "올리는 중…" : drag ? "여기에 놓으세요" : `md 파일을 끌어다 놓기 → ${kind === "company" ? `회사${projectId ? ` · ${projects.find((p) => p.id === projectId)?.name ?? ""}` : ""}` : "기타"}`}
             </span>
-            <span className="text-xs text-ink-3">또는 눌러서 파일 찾기 · 여러 개 한 번에 · 파일당 500KB 까지</span>
+            <span className="text-xs text-ink-3">
+              또는 눌러서 파일 찾기 · {kind === "company" && projectId ? "프로젝트 문서를 이 파일로 바꿔요" : "여러 개 한 번에"} · 파일당 500KB 까지
+            </span>
           </button>
           <input
             ref={inputRef}
             type="file"
             accept=".md,.markdown,text/markdown"
-            multiple
+            multiple={!(kind === "company" && projectId)}
             className="hidden"
             onChange={(e) => {
               if (e.target.files?.length) upload(e.target.files);
@@ -189,7 +250,7 @@ export default function HistoryUpload() {
                     <span className="min-w-0 flex-1 truncate">{r.name}</span>
                   )}
                   <span className="shrink-0 text-xs text-ink-3">
-                    {r.ok ? `${shortDate(r.date ?? "")}${r.replaced ? " · 내용 바꿈" : ""}` : r.error}
+                    {r.ok ? `${shortDate(r.date ?? "")}${r.replaced ? " · 이전 문서 바꿈" : ""}` : r.error}
                   </span>
                 </li>
               ))}
@@ -240,6 +301,21 @@ export default function HistoryUpload() {
                       {d.filename}
                     </div>
                   </div>
+                  {d.kind === "company" && projects.length > 0 && (
+                    <select
+                      value={d.projectId ?? ""}
+                      onChange={(e) => changeProject(d, e.target.value)}
+                      className="max-w-[110px] shrink-0 rounded-lg border border-line bg-paper px-2 py-1 text-xs font-semibold"
+                      aria-label="프로젝트"
+                    >
+                      <option value="">프로젝트 없음</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <select
                     value={d.kind}
                     onChange={(e) => changeKind(d, e.target.value as HistoryKind)}

@@ -31,6 +31,8 @@ export interface HistoryDoc {
   source?: "file" | "upload";
   /** 회사 일 / 기타 (개인 프로젝트·공부 등) */
   kind: HistoryKind;
+  /** 속한 프로젝트 (설정·히스토리에서 올린 문서만) */
+  projectId?: string | null;
 }
 
 export * from "./historyKinds";

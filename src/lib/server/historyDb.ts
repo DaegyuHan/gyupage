@@ -10,13 +10,14 @@ interface Row {
   filename: string;
   raw: string;
   kind?: string;
+  project_id?: string | null;
   created_at: string | number;
   updated_at: string | number;
 }
 
 function rowToDoc(r: Row): HistoryDoc {
   // 올릴 때 고른 구분이 파일 안 값보다 우선
-  return { ...parseDoc(r.filename, r.raw), slug: r.slug, source: "upload", kind: toKind(r.kind) };
+  return { ...parseDoc(r.filename, r.raw), slug: r.slug, source: "upload", kind: toKind(r.kind), projectId: r.project_id ?? null };
 }
 
 export async function listUploaded(): Promise<(HistoryDoc & { filename: string; updatedAt: number })[]> {
