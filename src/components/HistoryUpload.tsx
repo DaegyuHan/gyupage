@@ -142,10 +142,10 @@ export default function HistoryUpload() {
         에 날짜순으로 정리돼요. 같은 파일 이름으로 다시 올리면 내용이 바뀌어요.
       </p>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-3">
           {/* 어디로 넣을지: 회사 / 기타 */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="text-sm font-semibold text-ink-2">넣을 곳</span>
             <div role="radiogroup" className="flex gap-1 rounded-full bg-sunken p-1">
               {HISTORY_KINDS.map((k) => (
@@ -164,12 +164,12 @@ export default function HistoryUpload() {
             <span className="text-xs text-ink-3">{kind === "company" ? "회사에서 한 일" : "개인 프로젝트·공부 등"}</span>
           </div>
           {kind === "company" && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <span className="text-sm font-semibold text-ink-2">프로젝트</span>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm font-semibold"
+                className="min-w-0 max-w-[60vw] rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm font-semibold sm:max-w-[240px]"
               >
                 <option value="">없음</option>
                 {projects.map((p) => (
@@ -290,9 +290,9 @@ export default function HistoryUpload() {
           ) : (
             <ul className="divide-y divide-line-soft rounded-2xl border border-line bg-surface">
               {docs.map((d) => (
-                <li key={d.slug} className="flex items-center gap-3 px-4 py-3">
-                  <span className="numeral w-[72px] shrink-0 text-sm font-semibold tabular-nums text-ink-2">{shortDate(d.date)}</span>
-                  <div className="min-w-0 flex-1">
+                <li key={d.slug} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+                  <span className="numeral w-[60px] shrink-0 sm:w-[72px] text-sm font-semibold tabular-nums text-ink-2">{shortDate(d.date)}</span>
+                  <div className="min-w-0 flex-1 basis-[55%]">
                     <Link href={`/history/${encodeURIComponent(d.slug)}`} className="block truncate font-bold hover:text-accent">
                       {d.title}
                     </Link>
@@ -301,11 +301,12 @@ export default function HistoryUpload() {
                       {d.filename}
                     </div>
                   </div>
+                  <div className="ml-[72px] flex min-w-0 items-center gap-2 sm:ml-0">
                   {d.kind === "company" && projects.length > 0 && (
                     <select
                       value={d.projectId ?? ""}
                       onChange={(e) => changeProject(d, e.target.value)}
-                      className="max-w-[110px] shrink-0 rounded-lg border border-line bg-paper px-2 py-1 text-xs font-semibold"
+                      className="min-w-0 max-w-[140px] rounded-lg border border-line bg-paper px-2 py-1 text-xs font-semibold"
                       aria-label="프로젝트"
                     >
                       <option value="">프로젝트 없음</option>
@@ -334,6 +335,7 @@ export default function HistoryUpload() {
                   >
                     삭제
                   </button>
+                  </div>
                 </li>
               ))}
             </ul>

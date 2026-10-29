@@ -11,6 +11,8 @@ export interface League {
   apiId: number;
   /** 시즌이 해를 넘기는지 (유럽식 8월~5월) */
   crossYear: boolean;
+  /** 축구 탭 리그 버튼에 보일지 (순위표가 없는 컵 대회는 false — 경기 결과에만 나옴) */
+  tab?: boolean;
 }
 
 /** 화면에 보이는 순서 */
@@ -18,9 +20,12 @@ export const LEAGUES: League[] = [
   { id: "K1", name: "K리그1", region: "domestic", color: "#1f5bd8", apiId: 292, crossYear: false },
   { id: "K2", name: "K리그2", region: "domestic", color: "#3a86c8", apiId: 293, crossYear: false },
   { id: "CL", name: "챔피언스리그", region: "overseas", color: "#1b2a6b", apiId: 2, crossYear: true },
+  { id: "EL", name: "유로파리그", region: "overseas", color: "#f26a1b", apiId: 3, crossYear: true },
   { id: "PL", name: "프리미어리그", region: "overseas", color: "#4b1d6e", apiId: 39, crossYear: true },
+  { id: "EFL", name: "카라바오컵", region: "overseas", color: "#0b8a4a", apiId: 48, crossYear: true, tab: false },
   { id: "PD", name: "라리가", region: "overseas", color: "#d9452b", apiId: 140, crossYear: true },
   { id: "BL1", name: "분데스리가", region: "overseas", color: "#c8102e", apiId: 78, crossYear: true },
+  { id: "DFB", name: "DFB 포칼", region: "overseas", color: "#a8862b", apiId: 81, crossYear: true, tab: false },
 ];
 
 export const LEAGUE_MAP = Object.fromEntries(LEAGUES.map((l) => [l.id, l])) as Record<LeagueId, League>;

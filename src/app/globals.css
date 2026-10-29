@@ -235,3 +235,32 @@ html {
     opacity: 1 !important;
   }
 }
+
+/* ───────── 마크다운 코드 블록 (CS·히스토리 공통) ─────────
+ * 인라인 코드용 스타일(밝은 배경 알약)이 블록 안 코드에도 붙어서
+ * 줄마다 밝은 띠가 덮여 글씨가 안 보이던 문제 → 블록 안에서는 지움
+ */
+.prose pre {
+  background: #161b24 !important;
+  color: #e6e9ef !important;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  border-radius: 0.9rem;
+  padding: 1rem 1.15rem;
+  font-size: 0.86em;
+  line-height: 1.7;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.prose pre code {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: inherit !important;
+  font-weight: 400 !important;
+  white-space: pre;
+}
+.prose pre code::before,
+.prose pre code::after {
+  content: none !important;
+}

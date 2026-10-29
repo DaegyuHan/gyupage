@@ -211,7 +211,7 @@ export default function BookSettings() {
         &lsquo;읽는 중&rsquo;인 책이 홈 맨 아래 독서 칸에 나와요. 홈에서 진행 바를 눌러 읽은 쪽 수를 적으면 독서 탭에 기록이 쌓여요.
       </p>
       <SaveError message={error} />
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <AddBook onAdd={add} />
         <div>
           <h3 className="mb-3 font-bold">내 책 {books.length > 0 && <span className="text-ink-3">{books.length}</span>}</h3>

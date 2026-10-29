@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import { todayKey } from "@/lib/date";
 import Link from "next/link";
@@ -27,6 +27,26 @@ export default function CalendarView() {
 
 
   const filtered = useMemo(() => events.filter((e) => visible.has(e.category)), [events, visible]);
+  // 오른쪽 '선택한 날' 칸을 달력 칸의 위·아래 끝에 맞추려고 실제 위치를 잼
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridBox, setGridBox] = useState<{ top: number; height: number } | null>(null);
+  useEffect(() => {
+    const grid = gridRef.current;
+    const layout = layoutRef.current;
+    if (!grid || !layout) return;
+    const measure = () => {
+      const g = grid.getBoundingClientRect();
+      const l = layout.getBoundingClientRect();
+      setGridBox({ top: Math.round(g.top - l.top), height: Math.round(g.height) });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(grid);
+    ro.observe(layout);
+    return () => ro.disconnect();
+  }, [loaded, store.authed]);
+
   // 달력 6주가 앞뒤 해로 넘어갈 수 있어서 3년치
   const holidays = useHolidays([year - 1, year, year + 1]);
 
@@ -78,7 +98,7 @@ export default function CalendarView() {
         <LegacyImport onDone={store.reload} />
       <SaveError message={store.error} />
       </div>
-      <div className="mt-6 grid gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div ref={layoutRef} className="mt-6 grid gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* 달력 */}
         <div className="min-w-0">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -160,6 +180,7 @@ export default function CalendarView() {
             </div>
           </div>
 
+          <div ref={gridRef}>
           <MonthGrid
             year={year}
             month={month}
@@ -170,11 +191,17 @@ export default function CalendarView() {
             onEventClick={editor.openEdit}
             holidays={holidays}
           />
+          </div>
           <p className="mt-3 text-xs text-ink-3">날짜를 먼저 한 번 눌러 고른 뒤, 그 칸의 일정을 누르면 편집하고 + 를 누르면 추가해요.</p>
         </div>
 
         {/* 선택한 날 */}
-        <aside className="space-y-10 xl:pt-[68px]">
+        {/* 넓은 화면: 달력 칸과 위·아래 끝을 똑같이 맞춤, 넘치면 안에서 스크롤 */}
+        <aside className="xl:relative">
+          <div
+            className="rounded-2xl border border-line bg-surface p-5 sm:p-6 xl:absolute xl:inset-x-0 xl:top-[var(--gt,68px)] xl:flex xl:h-[var(--gh,760px)] xl:flex-col"
+            style={gridBox ? ({ "--gt": `${gridBox.top}px`, "--gh": `${gridBox.height}px` } as React.CSSProperties) : undefined}
+          >
           <DayPanel
             dateKey={selected}
             holiday={holidays.get(selected)}
@@ -183,6 +210,7 @@ export default function CalendarView() {
             onEventClick={editor.openEdit}
             onMemoChange={editor.updateMemo}
           />
+          </div>
         </aside>
       </div>
 

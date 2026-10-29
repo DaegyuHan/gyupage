@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAllHistory, parseDoc, toKind } from "@/lib/history";
 import { guarded } from "@/lib/server/api";
 import { db } from "@/lib/server/db";
-import { listUploaded } from "@/lib/server/historyDb";
+import { kstDay, listUploaded } from "@/lib/server/historyDb";
 
 const MAX_BYTES = 500_000;
 
@@ -60,13 +60,17 @@ export async function POST(req: Request) {
         continue;
       }
       const filename = name.replace(/\.markdown$/i, ".md").normalize("NFC");
-      const doc = parseDoc(filename, content);
+      const parsed = parseDoc(filename, content);
       const now = Date.now();
+      // 날짜가 없는 파일은 올린 날짜로
+      const doc = { ...parsed, date: parsed.date || kstDay(now) };
 
       // 같은 파일 이름이면 덮어쓰기
       const same = (await sql`SELECT slug FROM history_docs WHERE filename = ${filename}`) as { slug: string }[];
       if (same[0]) {
-        await sql`UPDATE history_docs SET raw = ${content}, kind = ${projectKind}, project_id = ${projectId}, updated_at = ${now} WHERE slug = ${same[0].slug}`;
+        // 날짜 없는 파일을 다시 올리면 '올린 날'도 새로
+        if (parsed.date) await sql`UPDATE history_docs SET raw = ${content}, kind = ${projectKind}, project_id = ${projectId}, updated_at = ${now} WHERE slug = ${same[0].slug}`;
+        else await sql`UPDATE history_docs SET raw = ${content}, kind = ${projectKind}, project_id = ${projectId}, created_at = ${now}, updated_at = ${now} WHERE slug = ${same[0].slug}`;
         if (projectId) await sql`DELETE FROM history_docs WHERE project_id = ${projectId} AND slug <> ${same[0].slug}`;
         results.push({ name, ok: true, slug: same[0].slug, title: doc.title, date: doc.date, replaced: true });
         continue;

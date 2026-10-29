@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LiveMarkdownEditor from "@/components/editor/LiveMarkdownEditor";
 import { DateRangeField, TimeField } from "./pickers";
 import { CATEGORIES, CATEGORY_MAP } from "@/lib/categories";
 import type { EventInput } from "@/lib/eventStore";
 import type { CalendarEvent, CategoryId } from "@/lib/types";
 
-const DEVLOG_TEMPLATE = `## 해야 할 일
-- [ ] 
+const DEVLOG_TEMPLATE = `## 오늘 한 일
 
-## 오늘 한 일
-- [ ] 
 
 ## 이슈 / 해결
-- 
+
 `;
+
+/** 템플릿 그대로(아무것도 안 적음)인지 */
+const isBlankMemo = (m: string) => !m.trim() || m.replace(/\s+/g, "") === DEVLOG_TEMPLATE.replace(/\s+/g, "");
 
 interface Props {
   open: boolean;
@@ -47,6 +47,10 @@ export default function EventModal({
   const [memo, setMemo] = useState("");
   const [done, setDone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** 열었을 때 값 — 바뀐 게 없으면 닫을 때 저장 안 함 */
+  const initial = useRef("");
+  /** Esc 로 닫을 때도 자동 저장하려고 최신 함수를 담아 둠 */
+  const closeRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!open) return;
@@ -56,14 +60,16 @@ export default function EventModal({
     setEnd(editing?.end ?? defaultDate);
     setTime(editing?.time ?? "");
     setDone(!!editing?.done);
-    setMemo(editing?.memo ?? (!editing && defaultCategory === "devlog" ? DEVLOG_TEMPLATE : ""));
+    const m = editing?.memo ?? (!editing && defaultCategory === "devlog" ? DEVLOG_TEMPLATE : "");
+    setMemo(m);
     setConfirmDelete(false);
+    initial.current = JSON.stringify([editing?.title ?? "", editing?.category ?? defaultCategory, editing?.start ?? defaultDate, editing?.end ?? defaultDate, editing?.time ?? "", m, !!editing?.done]);
   }, [open, editing, defaultDate, defaultCategory]);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         document.getElementById("event-form-submit")?.click();
@@ -77,28 +83,48 @@ export default function EventModal({
 
   const c = CATEGORY_MAP[category];
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  /** 지금 입력값 → 저장할 값 (제목이 없어 저장할 수 없으면 null) */
+  const build = (): EventInput | null => {
     const finalTitle = title.trim() || (category === "devlog" ? "개발일지" : "");
-    if (!finalTitle) return;
+    if (!finalTitle) return null;
     if (category === "todo") {
       // 할일은 하루짜리 한 줄 (홈 '오늘 꼭 할 일'과 같은 데이터)
-      onSave({ title: finalTitle.slice(0, 80), category, start, end: start, done });
-      return;
+      return { title: finalTitle.slice(0, 80), category, start, end: start, done };
     }
-    onSave({
+    return {
       title: finalTitle,
       category,
       start,
       end: end < start ? start : end,
       time: time || undefined,
       memo: memo.trimEnd() || undefined,
-    });
+    };
   };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const input = build();
+    if (input) onSave(input);
+  };
+
+  /**
+   * 닫기(바깥 클릭·X·Esc·닫기 버튼) = 자동 저장
+   * - 바뀐 게 없으면 그냥 닫음
+   * - 새 일정인데 아무것도 안 적었으면(템플릿 그대로) 만들지 않음
+   */
+  const closeWithSave = () => {
+    const now = JSON.stringify([title, category, start, end, time, memo, done]);
+    if (now === initial.current) return onClose();
+    if (!editing && !title.trim() && isBlankMemo(memo)) return onClose();
+    const input = build();
+    if (input) onSave(input);
+    else onClose();
+  };
+  closeRef.current = closeWithSave;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="anim-fade absolute inset-0 bg-ink/25 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="anim-fade absolute inset-0 bg-ink/25 backdrop-blur-[2px]" onClick={closeWithSave} />
       <form
         onSubmit={submit}
         className="anim-drawer relative flex h-full w-full max-w-[640px] flex-col bg-surface shadow-[-24px_0_60px_-20px_rgba(20,28,43,0.25)]"
@@ -129,9 +155,9 @@ export default function EventModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={closeWithSave}
             className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink"
-            aria-label="닫기"
+            aria-label="닫기 (자동 저장)"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
               <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -192,7 +218,7 @@ export default function EventModal({
               onChange={setMemo}
               minHeight={category === "devlog" ? 360 : 220}
               autoFocus={!!editing}
-              placeholder="## 제목, - [ ] 할 일, **굵게** 처럼 마크다운으로 적어요"
+              placeholder="자유롭게 적어요 (## 제목, **굵게** 같은 마크다운도 돼요)"
             />
           </div>
             </>
@@ -222,18 +248,15 @@ export default function EventModal({
               </button>
             )
           ) : (
-            <span className="text-xs text-ink-3">Ctrl+Enter 로 저장</span>
+            <span className="text-xs text-ink-3">바깥을 누르거나 닫으면 자동 저장돼요</span>
           )}
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-sm font-medium text-ink-2 hover:bg-sunken">
-              취소
-            </button>
             <button
               id="event-form-submit"
               type="submit"
               className="rounded-full bg-ink px-5 py-2 text-sm font-semibold text-paper transition-transform active:scale-[0.97]"
             >
-              저장
+              완료
             </button>
           </div>
         </div>

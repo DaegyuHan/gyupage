@@ -79,7 +79,7 @@ export default function MonitorSettings() {
         외부 API 에러는 디스코드로 바로, 하루 사용량·남은 한도는 매일 오전 9시에 리포트로 보내요.
       </p>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <div className="space-y-3">
           <ul className="space-y-2 rounded-2xl border border-line bg-surface p-4 text-sm">
             {!data && <li className="h-16 animate-pulse rounded-lg bg-sunken/70" />}

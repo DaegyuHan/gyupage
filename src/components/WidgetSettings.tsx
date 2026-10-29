@@ -38,7 +38,7 @@ export default function WidgetSettings() {
         &lsquo;오늘 꼭 할 일&rsquo;을 아이폰 홈 화면·잠금 화면 위젯으로 볼 수 있어요. 무료 앱 <b>Scriptable</b> 이 위젯을 그려 줘요.
       </p>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <ol className="space-y-3 rounded-2xl border border-line bg-surface p-5 text-sm leading-relaxed">
           {[
             <>

@@ -132,7 +132,7 @@ export default function PushSettings() {
       <h2 className="text-xl font-extrabold tracking-tight">알림</h2>
       <p className="mt-1 text-sm text-ink-2">일정·경기·할 일을 폰 알림으로 받아요. 기기마다 따로 켜요.</p>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="rounded-2xl border border-line bg-surface p-5">
           <div className="flex items-center gap-3">
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${status === "on" ? "bg-[#30a46c]" : status === "off" || status === "checking" ? "bg-ink-3" : "bg-[#f5a524]"}`} />

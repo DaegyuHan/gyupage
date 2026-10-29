@@ -15,9 +15,15 @@ interface Row {
   updated_at: string | number;
 }
 
+/** 시각(ms) → 한국 시간 YYYY-MM-DD */
+export const kstDay = (ms: number) => new Date((Number.isFinite(ms) ? ms : Date.now()) + 9 * 3600_000).toISOString().slice(0, 10);
+
 function rowToDoc(r: Row): HistoryDoc {
   // 올릴 때 고른 구분이 파일 안 값보다 우선
-  return { ...parseDoc(r.filename, r.raw), slug: r.slug, source: "upload", kind: toKind(r.kind), projectId: r.project_id ?? null };
+  const doc = parseDoc(r.filename, r.raw);
+  // 파일 안·파일 이름에 날짜가 없으면 올린 날(한국 시간)
+  const date = doc.date || kstDay(Number(r.created_at));
+  return { ...doc, date, slug: r.slug, source: "upload", kind: toKind(r.kind), projectId: r.project_id ?? null };
 }
 
 export async function listUploaded(): Promise<(HistoryDoc & { filename: string; updatedAt: number })[]> {

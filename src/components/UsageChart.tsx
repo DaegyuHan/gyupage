@@ -160,7 +160,7 @@ export default function UsageChart() {
 
       {err && <p className="text-sm text-[#e5484d]">{err}</p>}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-line bg-surface p-5">
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <h3 className="font-bold">최근 48시간 · 시간별</h3>

@@ -123,6 +123,7 @@ const ESPN_SLUG: Partial<Record<LeagueId, string>> = {
   PD: "esp.1",
   BL1: "ger.1",
   CL: "uefa.champions",
+  EL: "uefa.europa",
 };
 
 interface EspnStandings {

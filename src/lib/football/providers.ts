@@ -162,7 +162,15 @@ async function overlayKLeague(list: Match[], from: string, to: string): Promise<
  * API-Football 경기 목록은 '어떤 경기가 몇 시에 있는지'만 알면 되니까 3시간에 한 번만 받고,
  * 진행 중 점수·분·종료 여부는 ESPN 으로 덮어써요. → API-Football 하루 사용량이 크게 줄어요.
  */
-const ESPN_SLUG: Partial<Record<Match["league"], string>> = { PL: "eng.1", PD: "esp.1", BL1: "ger.1", CL: "uefa.champions" };
+const ESPN_SLUG: Partial<Record<Match["league"], string>> = {
+  PL: "eng.1",
+  PD: "esp.1",
+  BL1: "ger.1",
+  CL: "uefa.champions",
+  EL: "uefa.europa",
+  EFL: "eng.league_cup",
+  DFB: "ger.dfb_pokal",
+};
 
 interface EspnEvent {
   date: string;
@@ -172,12 +180,28 @@ interface EspnEvent {
   }[];
 }
 
-const espnBoard = cached("espn-board-v1", 90, async (slug: string, from: string, to: string): Promise<EspnEvent[]> => {
-  const d = (k: string) => k.replaceAll("-", "");
-  const res = await mfetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${d(from)}-${d(to)}&limit=200`, { cache: "no-store" });
+/**
+ * ESPN 스코어보드 하루치 — dates=YYYYMMDD (하루만 됨, 기간 범위는 400 에러)
+ * ESPN 날짜는 미국 기준이라 KST 하루를 덮으려면 전날까지 같이 봄
+ */
+const espnFetchDay = async (slug: string, day: string): Promise<EspnEvent[]> => {
+  const res = await mfetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${day.replaceAll("-", "")}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(6000),
+  });
   if (!res.ok) return [];
   return ((await res.json()) as { events?: EspnEvent[] }).events ?? [];
-});
+};
+// 진행 중일 수 있는 날은 90초, 지난 날은 끝난 경기뿐이라 6시간
+const espnDayLive = cached("espn-day-live-v1", 90, espnFetchDay);
+const espnDayPast = cached("espn-day-past-v1", 60 * 60 * 6, espnFetchDay);
+
+async function espnBoard(slug: string, from: string, to: string): Promise<EspnEvent[]> {
+  const days: string[] = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
+  const lists = await Promise.all(days.map((d, i) => (i === 0 ? espnDayPast : espnDayLive)(slug, d).catch(() => [] as EspnEvent[])));
+  return lists.flat();
+}
 
 const STOP = new Set(["fc", "cf", "afc", "sc", "ac", "as", "ssc", "club", "de", "the", "1", "real"]);
 /** "Bayern München" / "Bayern Munich" → {bayern, munchen} / {bayern, munich} */
@@ -202,7 +226,7 @@ async function overlayOverseas(list: Match[], from: string, to: string): Promise
   if (!leagues.length) return list;
   // KST 하루가 미국 시간으로는 이틀에 걸쳐서 앞뒤로 하루씩 넉넉히
   const boards = new Map(
-    await Promise.all(leagues.map(async (l) => [l, await espnBoard(ESPN_SLUG[l]!, addDays(from, -1), addDays(to, 1)).catch(() => [] as EspnEvent[])] as const)),
+    await Promise.all(leagues.map(async (l) => [l, await espnBoard(ESPN_SLUG[l]!, addDays(from, -1), to).catch(() => [] as EspnEvent[])] as const)),
   );
   return list.map((m) => {
     const events = boards.get(m.league);

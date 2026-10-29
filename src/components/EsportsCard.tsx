@@ -45,6 +45,18 @@ function TeamCell({ t, align }: { t: EsportsTeam; align: "left" | "right" }) {
   );
 }
 
+/**
+ * 끝난 경기 → 네이버 검색 "2026년 10월 29일 Movistar KOI T1"
+ * (날짜는 한국 시간, 상대 팀 → 응원 팀 순서, 팀 이름은 풀네임)
+ */
+function highlightUrl(m: EsportsMatch) {
+  const d = new Date(Date.parse(m.start) + 9 * 3600_000);
+  const date = `${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+  const teams = [...m.teams].sort((x, y) => Number(x.mine) - Number(y.mine));
+  const q = `${date} ${teams.map((t) => t.name || t.code).join(" ")}`.replace(/\s+/g, " ").trim();
+  return `https://search.naver.com/search.naver?query=${encodeURIComponent(q)}`;
+}
+
 function Row({ m }: { m: EsportsMatch }) {
   const [a, b] = m.teams;
   const live = m.state === "inProgress";
@@ -52,8 +64,8 @@ function Row({ m }: { m: EsportsMatch }) {
   const mine = m.teams.find((t) => t.mine);
   const won = done && mine?.outcome === "win";
 
-  return (
-    <li className="py-2.5">
+  const body = (
+    <>
       <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] text-ink-3">
         <span className="truncate">
           {m.league}
@@ -98,8 +110,32 @@ function Row({ m }: { m: EsportsMatch }) {
           </span>
         </div>
       )}
-    </li>
+    </>
   );
+
+  // 끝난 경기는 누르면 하이라이트 검색으로
+  if (done) {
+    return (
+      <li>
+        <a
+          href={highlightUrl(m)}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="네이버에서 하이라이트 보기"
+          className="group -mx-2 block rounded-xl px-2 py-2.5 transition-colors hover:bg-sunken/70"
+        >
+          {body}
+          <span className="mt-1 flex items-center justify-end gap-1 text-[10px] font-semibold text-ink-3 group-hover:text-accent">
+            하이라이트 보기
+            <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden>
+              <path d="M4 2h6v6M10 2 3 9" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </a>
+      </li>
+    );
+  }
+  return <li className="py-2.5">{body}</li>;
 }
 
 /** LoL e스포츠: T1·한화생명 다음 경기와 팀별 최근 결과 */

@@ -1,4 +1,5 @@
-export type LeagueId = "PL" | "PD" | "BL1" | "CL" | "K1" | "K2";
+/** EL 유로파리그 · EFL 잉글랜드 리그컵(카라바오컵) · DFB 독일 DFB 포칼 */
+export type LeagueId = "PL" | "PD" | "BL1" | "CL" | "EL" | "EFL" | "DFB" | "K1" | "K2";
 
 export type MatchStatus = "scheduled" | "live" | "finished" | "postponed";
 

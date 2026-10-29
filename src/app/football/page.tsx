@@ -45,7 +45,7 @@ export default async function FootballPage({ searchParams }: Props) {
       {/* 리그 선택 */}
       <nav aria-label="리그" className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
         <ul className="flex gap-1.5 whitespace-nowrap">
-          {LEAGUES.map((l) => {
+          {LEAGUES.filter((l) => l.tab !== false).map((l) => {
             const on = l.id === league;
             return (
               <li key={l.id}>
