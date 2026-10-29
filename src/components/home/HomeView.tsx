@@ -21,6 +21,7 @@ import { useEvents } from "@/lib/eventStore";
 import HourlyWeather from "@/components/weather/HourlyWeather";
 import WeatherNow from "@/components/weather/WeatherNow";
 import { useWeather } from "@/components/weather/useWeather";
+import HealthCard from "./HealthCard";
 import TodayTodos from "./TodayTodos";
 import WeekBoard from "./WeekBoard";
 import { useHomeMatches } from "./useHomeMatches";
@@ -90,6 +91,9 @@ export default function HomeView() {
           </LazyMount>
           <LazyMount minHeight={200}>
             <ReadingSection />
+          </LazyMount>
+          <LazyMount minHeight={200}>
+            <HealthCard />
           </LazyMount>
         </div>
         <aside className="space-y-10">

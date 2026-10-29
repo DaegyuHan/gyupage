@@ -109,10 +109,17 @@ function ProgressEditor({ book, onSave }: { book: Book; onSave: (page: number) =
   );
 }
 
-/** 홈 맨 아래: 지금 읽고 있는 책과 진행도 */
+/**
+ * 홈: 책 두 권까지 — 읽는 중인 책이 먼저, 칸이 남으면 가장 최근에 다 읽은 책
+ * (한 권을 다 읽고 다음 책으로 넘어가도 방금 끝낸 책이 옆에 같이 보임)
+ */
 export default function ReadingSection() {
   const { books, loaded, authed, authLoading, error, setProgress } = useBooks({ logs: false });
-  const reading = books.filter((b) => b.status === "reading");
+  const lastDone = books
+    .filter((b) => b.status === "done")
+    .sort((a, b) => (b.finishedAt ?? b.updatedAt) - (a.finishedAt ?? a.updatedAt))[0];
+  const nowReading = books.filter((b) => b.status === "reading").slice(0, 2);
+  const reading = nowReading.length < 2 && lastDone ? [...nowReading, lastDone] : nowReading;
 
   return (
     <section>
@@ -138,34 +145,44 @@ export default function ReadingSection() {
         >
           로그인하면 읽고 있는 책이 보여요
         </Link>
-      ) : !loaded ? (
-        <div className="h-[150px] rounded-2xl bg-sunken/70" aria-busy="true" />
-      ) : reading.length === 0 ? (
-        <Link
-          href="/settings#books"
-          className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-3 hover:border-accent hover:text-accent"
-        >
-          <span className="font-semibold text-ink-2">지금 읽고 있는 책이 없어요</span>
-          설정에서 책을 추가해 보세요 →
-        </Link>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {reading.map((b) => (
-            <div key={b.id} className="flex gap-4 rounded-2xl border border-line bg-surface p-4">
-              <BookCover src={b.cover} title={b.title} className="w-[76px]" />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <h3 className="line-clamp-2 text-[16px] font-extrabold leading-snug tracking-tight" title={b.title}>
-                  {b.title}
-                </h3>
-                <p className="mt-0.5 text-[11px] text-ink-3">
-                  {b.totalPages - b.currentPage > 0 ? `${(b.totalPages - b.currentPage).toLocaleString()}쪽 남았어요` : "완독"}
-                </p>
-                <div className="mt-auto pt-3">
-                  <ProgressEditor book={b} onSave={(p) => setProgress(b.id, p)} />
+          {!loaded ? (
+            <div className="h-[150px] rounded-2xl bg-sunken/70" aria-busy="true" />
+          ) : reading.length === 0 ? (
+            <Link
+              href="/settings#books"
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-3 hover:border-accent hover:text-accent"
+            >
+              <span className="font-semibold text-ink-2">지금 읽고 있는 책이 없어요</span>
+              설정에서 책을 추가해 보세요 →
+            </Link>
+          ) : (
+            reading.map((b) => (
+              <div key={b.id} className="flex gap-4 rounded-2xl border border-line bg-surface p-4">
+                <BookCover src={b.cover} title={b.title} className="w-[76px]" />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <h3 className="line-clamp-2 text-[16px] font-extrabold leading-snug tracking-tight" title={b.title}>
+                    {b.title}
+                  </h3>
+                  <p className="mt-0.5 text-[11px] text-ink-3">
+                    {b.status === "done" ? (
+                      <span className="font-semibold text-[#0e8a6b]">
+                        다 읽음{b.finishedAt ? ` · ${new Date(b.finishedAt + 9 * 3600_000).getUTCMonth() + 1}/${new Date(b.finishedAt + 9 * 3600_000).getUTCDate()} 완독` : ""}
+                      </span>
+                    ) : b.totalPages - b.currentPage > 0 ? (
+                      `${(b.totalPages - b.currentPage).toLocaleString()}쪽 남았어요`
+                    ) : (
+                      "완독"
+                    )}
+                  </p>
+                  <div className="mt-auto pt-3">
+                    <ProgressEditor book={b} onSave={(p) => setProgress(b.id, p)} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
     </section>

@@ -1,12 +1,13 @@
 import Link from "next/link";
-import MatchRow from "@/components/football/MatchRow";
+import LeaderTabs from "@/components/football/LeaderTabs";
+import LeagueNews from "@/components/football/LeagueNews";
 import StandingsTable from "@/components/football/StandingsTable";
-import TopScorers from "@/components/football/TopScorers";
-import { addDays, kstDate } from "@/lib/football/kst";
+import WeekSchedule from "@/components/football/WeekSchedule";
+import { getLeagueNews, getLeagueWeek, type WeekSchedule as Week } from "@/lib/football/leagueExtras";
 import { currentSeason, isLeagueId, LEAGUE_MAP, LEAGUES, seasonLabel } from "@/lib/football/leagues";
-import { fetchApiFootball, splitByDay } from "@/lib/football/providers";
-import { getStandings, getTopScorers, type Scorer, type Standings } from "@/lib/football/standings";
-import type { LeagueId, Match } from "@/lib/football/types";
+import { getLeaders, getStandings, type Leaders, type Standings } from "@/lib/football/standings";
+import type { LeagueId } from "@/lib/football/types";
+import type { NewsItem } from "@/lib/news";
 
 export const metadata = { title: "축구 | 규페이지" };
 
@@ -28,17 +29,14 @@ export default async function FootballPage({ searchParams }: Props) {
   const info = LEAGUE_MAP[league];
   const season = currentSeason(league);
 
-  const today = kstDate(new Date());
-  const yesterday = addDays(today, -1);
-
-  const [standings, scorers, fixtures] = await Promise.all([
+  const [standings, leaders, week, news] = await Promise.all([
     settle<Standings>(getStandings(league)),
-    settle<Scorer[]>(getTopScorers(league)),
-    settle<Match[]>(fetchApiFootball(yesterday, today)),
+    settle<Leaders>(getLeaders(league)),
+    settle<Week>(getLeagueWeek(league)),
+    settle<NewsItem[]>(getLeagueNews(league)),
   ]);
-
-  const days = fixtures.ok ? splitByDay(fixtures.v.filter((m) => m.league === league), yesterday, today) : null;
-  const noKey = [standings, scorers, fixtures].some((r) => !r.ok && r.noKey);
+  const noKey = false;
+  const isK = league === "K1" || league === "K2";
 
   return (
     <div className="pt-6">
@@ -99,43 +97,30 @@ export default async function FootballPage({ searchParams }: Props) {
               </div>
             )
           )}
+
+          {/* 이번 주 일정·결과 */}
+          <div className="mt-12">
+            <h2 className="mb-4 text-xl font-bold tracking-tight">이번 주 일정·결과</h2>
+            {week.ok ? <WeekSchedule week={week.v} /> : <p className="text-sm text-ink-3">경기 일정을 불러오지 못했어요.</p>}
+            <p className="mt-3 text-xs text-ink-3">{isK ? "K리그 공식 일정이에요." : "경기를 누르면 득점·통계·라인업·하이라이트를 볼 수 있어요."}</p>
+          </div>
+
+          {/* 리그 뉴스 */}
+          <div className="mt-12">
+            <h2 className="mb-4 text-xl font-bold tracking-tight">{info.name} 뉴스</h2>
+            {news.ok ? <LeagueNews items={news.v} /> : <p className="text-sm text-ink-3">뉴스를 불러오지 못했어요.</p>}
+          </div>
         </section>
 
         <aside className="space-y-10">
-          {/* 이 리그 경기 */}
+          {/* 득점 · 도움 · 공격포인트 */}
           <section>
-            <h2 className="mb-3 font-bold">{info.name} 경기</h2>
-            {!days ? (
-              <p className="text-sm text-ink-3">경기 정보를 불러오지 못했어요.</p>
-            ) : days.yesterday.length + days.today.length === 0 ? (
-              <p className="text-sm text-ink-3">어제와 오늘은 {info.name} 경기가 없어요.</p>
+            <h2 className="mb-3 font-bold">개인 순위</h2>
+            {leaders.ok ? (
+              <LeaderTabs data={leaders.v} note={isK ? "K리그 공식" : "ESPN · 공격포인트는 득점·도움 상위 선수로 계산"} />
             ) : (
-              <div className="space-y-4">
-                {(
-                  [
-                    ["오늘", days.today],
-                    ["어제", days.yesterday],
-                  ] as const
-                )
-                  .filter(([, list]) => list.length > 0)
-                  .map(([label, list]) => (
-                    <div key={label}>
-                      <h3 className="text-xs font-bold text-ink-2">{label}</h3>
-                      <ul className="divide-y divide-line-soft">
-                        {list.map((m) => (
-                          <MatchRow key={m.id} m={m} />
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-              </div>
+              <p className="text-sm text-ink-3">개인 순위를 불러오지 못했어요.</p>
             )}
-          </section>
-
-          {/* 득점 순위 */}
-          <section>
-            <h2 className="mb-3 font-bold">득점 순위</h2>
-            {scorers.ok ? <TopScorers list={scorers.v} /> : <p className="text-sm text-ink-3">득점 순위를 불러오지 못했어요.</p>}
           </section>
         </aside>
       </div>

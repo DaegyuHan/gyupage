@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CATEGORY_MAP } from "@/lib/categories";
 import { monthGrid, toKey, todayKey, WEEKDAYS } from "@/lib/date";
 import type { CalendarEvent } from "@/lib/types";
@@ -19,6 +20,10 @@ interface Props {
 const MAX_BAR_LANES = 3;
 const MAX_SINGLE = 3;
 const BAR_H = 22; // px, 기간 바 한 줄 높이(간격 포함)
+/** 프로젝트는 날짜 바로 아래 얇은 타임라인 줄로 (이름 + 4px 선) */
+const MAX_PROJ_LANES = 3;
+const PROJ_H = 20; // px, 프로젝트 한 줄 높이
+const PROJ_GAP = 2;
 
 export interface Segment {
   ev: CalendarEvent;
@@ -65,10 +70,15 @@ export function layoutWeek(weekKeys: string[], multi: CalendarEvent[]): Segment[
 export default function MonthGrid({ year, month, events, selected, onSelect, onAdd, onEventClick, holidays }: Props) {
   const days = monthGrid(year, month);
   const today = todayKey();
-  const multi = events.filter((e) => e.start !== e.end);
-  const single = events.filter((e) => e.start === e.end);
+  // 프로젝트는 오래 겹쳐 있어서 위쪽 막대 대신 아래쪽 타임라인으로 (하루짜리도 같이)
+  const projects = events.filter((e) => e.category === "project");
+  const others = events.filter((e) => e.category !== "project");
+  const multi = others.filter((e) => e.start !== e.end);
+  const single = others.filter((e) => e.start === e.end);
 
   const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
+  // 프로젝트 줄에 마우스를 올리면 주가 바뀌어도 같은 프로젝트 줄이 다 같이 두꺼워짐
+  const [hoverProject, setHoverProject] = useState<string | null>(null);
 
   return (
     <div className="-mx-4 overflow-hidden border-y border-line bg-surface sm:mx-0 sm:rounded-2xl sm:border-x">
@@ -88,6 +98,11 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
         const segs = layoutWeek(keys, multi);
         const visibleSegs = segs.filter((s) => s.lane < MAX_BAR_LANES);
         const lanes = Math.min(MAX_BAR_LANES, segs.reduce((m, s) => Math.max(m, s.lane + 1), 0));
+        const projSegs = layoutWeek(keys, projects);
+        const visibleProj = projSegs.filter((s) => s.lane < MAX_PROJ_LANES);
+        const projLanes = Math.min(MAX_PROJ_LANES, projSegs.reduce((m, s) => Math.max(m, s.lane + 1), 0));
+        /** 날짜 바로 아래 프로젝트 줄이 차지하는 높이 (그 아래로 다른 일정) */
+        const projSpace = projLanes ? projLanes * (PROJ_H + PROJ_GAP) + 2 : 0;
 
         return (
           <div key={keys[0]} className={`relative grid grid-cols-7 ${wi < 5 ? "border-b border-line-soft" : ""}`}>
@@ -100,7 +115,9 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
               const daySingles = single
                 .filter((e) => e.start === key)
                 .sort((a, b) => (a.time ?? "99").localeCompare(b.time ?? "99"));
-              const hiddenBars = segs.filter((s) => s.lane >= MAX_BAR_LANES && s.startCol <= i && s.endCol >= i).length;
+              const hiddenBars =
+                segs.filter((s) => s.lane >= MAX_BAR_LANES && s.startCol <= i && s.endCol >= i).length +
+                projSegs.filter((s) => s.lane >= MAX_PROJ_LANES && s.startCol <= i && s.endCol >= i).length;
               const more = Math.max(0, daySingles.length - MAX_SINGLE) + hiddenBars;
               const dow = d.getDay();
               const holiday = holidays?.get(key);
@@ -155,8 +172,8 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                     </button>
                   </div>
 
-                  {/* 기간 바 자리 비우기 */}
-                  <div style={{ height: lanes * BAR_H + (lanes ? 2 : 0) }} />
+                  {/* 프로젝트 줄 자리 + 기간 바 자리 비우기 */}
+                  <div style={{ height: projSpace + lanes * BAR_H + (lanes ? 2 : 0) }} />
 
                   <div className={`space-y-0.5 ${inMonth ? "" : "opacity-50"}`}>
                     {daySingles.slice(0, MAX_SINGLE).map((ev) => {
@@ -189,7 +206,7 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
             {visibleSegs.length > 0 && (
               <div
                 className="pointer-events-none absolute inset-x-0 grid grid-cols-7"
-                style={{ top: 38, gridAutoRows: BAR_H }}
+                style={{ top: 38 + projSpace, gridAutoRows: BAR_H }}
               >
                 {visibleSegs.map((s) => {
                   const c = CATEGORY_MAP[s.ev.category];
@@ -219,6 +236,59 @@ export default function MonthGrid({ year, month, events, selected, onSelect, onA
                       }}
                     >
                       {s.ev.title}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 프로젝트: 날짜 바로 아래 얇은 줄 (다른 일정보다 위, 이름은 시작하는 날·주의 첫 칸에만) */}
+            {visibleProj.length > 0 && (
+              <div
+                className="pointer-events-none absolute inset-x-0 grid grid-cols-7"
+                style={{ top: 36, gridAutoRows: PROJ_H, rowGap: PROJ_GAP }}
+              >
+                {visibleProj.map((s) => {
+                  const c = CATEGORY_MAP[s.ev.category];
+                  const showName = s.isStart || s.startCol === 0;
+                  return (
+                    <button
+                      key={s.ev.id}
+                      onClick={(e) => {
+                        const row = e.currentTarget.parentElement!.getBoundingClientRect();
+                        const col = Math.min(6, Math.max(0, Math.floor(((e.clientX - row.left) / row.width) * 7)));
+                        const key = keys[col];
+                        if (key !== selected) {
+                          onSelect(key);
+                          return;
+                        }
+                        onEventClick(s.ev);
+                      }}
+                      title={`${s.ev.title} (${s.ev.start} ~ ${s.ev.end})`}
+                      onMouseEnter={() => setHoverProject(s.ev.id)}
+                      onMouseLeave={() => setHoverProject((h) => (h === s.ev.id ? null : h))}
+                      onFocus={() => setHoverProject(s.ev.id)}
+                      onBlur={() => setHoverProject((h) => (h === s.ev.id ? null : h))}
+                      className="pointer-events-auto relative min-w-0 text-left"
+                      style={{
+                        gridColumn: `${s.startCol + 1} / ${s.endCol + 2}`,
+                        gridRow: s.lane + 1,
+                        marginLeft: s.isStart ? 5 : 0,
+                        marginRight: s.isEnd ? 5 : 0,
+                      }}
+                    >
+                      {showName && (
+                        <span
+                          className={`absolute inset-x-0 bottom-[7px] truncate px-0.5 text-[9.5px] font-bold leading-none sm:px-1 sm:text-[10.5px] ${s.ev.done ? "line-through opacity-60" : ""} ${hoverProject === s.ev.id ? "brightness-125" : ""}`}
+                          style={{ color: c.color }}
+                        >
+                          {s.ev.title}
+                        </span>
+                      )}
+                      <span
+                        className={`absolute inset-x-0 bottom-0 rounded-full transition-[height] ${hoverProject === s.ev.id ? "h-1.5" : "h-1"}`}
+                        style={{ background: c.color, borderRadius: `${s.isStart ? 9 : 0}px ${s.isEnd ? 9 : 0}px ${s.isEnd ? 9 : 0}px ${s.isStart ? 9 : 0}px` }}
+                      />
                     </button>
                   );
                 })}

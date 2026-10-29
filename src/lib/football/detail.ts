@@ -103,6 +103,29 @@ export interface MatchDetail {
   stats: StatRow[];
   lineups: { home?: Lineup; away?: Lineup };
   absences?: { home: Absence[]; away: Absence[] };
+  /* ESPN 에서 같이 오는 추가 정보 (API-Football 경기엔 없음) */
+  attendance?: number;
+  broadcast?: string;
+  /** 두 팀 최근 5경기 */
+  form?: { home: FormGame[]; away: FormGame[] };
+  /** 홈 팀 기준 상대 전적 */
+  h2h?: FormGame[];
+  videos?: { title: string; href: string; duration?: number; thumb?: string }[];
+  news?: { title: string; href: string }[];
+  source?: "API-Football" | "ESPN";
+}
+
+export interface FormGame {
+  /** YYYY-MM-DD (KST) */
+  date: string;
+  opponent: string;
+  opponentLogo?: string;
+  /** 우리 팀이 홈이었는지 */
+  home: boolean;
+  /** "2-1" (우리 팀 기준 아님, 원문 그대로) */
+  score: string;
+  result?: "W" | "D" | "L";
+  competition?: string;
 }
 
 /* ───────── API-Football 원본 형태 (필요한 것만) ───────── */

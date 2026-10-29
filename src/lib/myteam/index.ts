@@ -46,7 +46,7 @@ const COMP_KO: [RegExp, string][] = [
   [/Friendly/i, "친선경기"],
 ];
 
-const TEAM_KO: Record<string, string> = {
+export const TEAM_KO: Record<string, string> = {
   // 프리미어리그
   Arsenal: "아스널", "Aston Villa": "애스턴 빌라", "AFC Bournemouth": "본머스", Bournemouth: "본머스", Brentford: "브렌트퍼드",
   "Brighton & Hove Albion": "브라이턴", Brighton: "브라이턴", Burnley: "번리", Chelsea: "첼시", "Crystal Palace": "크리스털 팰리스",
@@ -71,7 +71,7 @@ const TEAM_KO: Record<string, string> = {
   Monaco: "모나코", Marseille: "마르세유", Lille: "릴", "Bodo/Glimt": "보되/글림트", Copenhagen: "코펜하겐", "Slavia Prague": "슬라비아 프라하",
 };
 
-const compKo = (s: string) => COMP_KO.find(([re]) => re.test(s))?.[1] ?? s;
+export const compKo = (s: string) => COMP_KO.find(([re]) => re.test(s))?.[1] ?? s;
 
 /* ───────── ESPN ───────── */
 
@@ -121,7 +121,8 @@ function espnMatch(e: EspnEvent, teamId: string): MtMatch | null {
   };
 }
 
-async function fromEspn(teamId: string) {
+/** ESPN 팀 일정 (모든 대회) — 축구 팀 페이지에서도 씀 */
+export async function fromEspn(teamId: string) {
   const [past, next] = await Promise.all([espnEvents(teamId, false), espnEvents(teamId, true)]);
   const all = [...past, ...next].map((e) => espnMatch(e, teamId)).filter((m): m is MtMatch => !!m);
   const logo = past[0]?.competitions?.[0]?.competitors.find((c) => c.team.id === teamId)?.team.logos?.[0]?.href ?? `https://a.espncdn.com/i/teamlogos/soccer/500/${teamId}.png`;

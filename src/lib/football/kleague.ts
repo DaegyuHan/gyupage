@@ -33,6 +33,12 @@ export interface KGame {
   awayTeamScore: number;
   statusCode: "BEFORE" | "STARTED" | "RESULT";
   cancel?: boolean;
+  /** 자세한 정보 (경기 줄을 펼치면 보임) */
+  round?: number;
+  venue?: string;
+  attendance?: number;
+  broadcast?: string;
+  referee?: string;
 }
 
 interface KlSchedule {
@@ -47,6 +53,12 @@ interface KlSchedule {
   awayTeamName: string;
   awayGoal: number | null;
   leagueId: number;
+  roundId?: number;
+  fieldNameFull?: string;
+  fieldName?: string;
+  audienceQty?: number;
+  broadcastName?: string;
+  refreeName1?: string | null;
 }
 
 async function post<T>(path: string, body: string, form = false): Promise<T> {
@@ -80,6 +92,12 @@ function toGame(g: KlSchedule): KGame {
     awayTeamName: g.awayTeamName,
     awayTeamScore: g.awayGoal ?? 0,
     statusCode: status,
+    round: g.roundId || undefined,
+    venue: g.fieldNameFull || g.fieldName || undefined,
+    attendance: g.audienceQty || undefined,
+    // "MAXPORTS//COUPANGPLAY" → "MAXPORTS · COUPANGPLAY"
+    broadcast: (g.broadcastName ?? "").split("/").filter(Boolean).join(" · ") || undefined,
+    referee: g.refreeName1 || undefined,
   };
 }
 
@@ -93,6 +111,8 @@ const fetchMonth = async (league: number, year: number, month: number) => {
 // 지난 달은 거의 안 바뀌니 오래, 이번 달은 1분
 const monthLive = cached("kl-month-live-v1", 60, fetchMonth);
 const monthPast = cached("kl-month-past-v1", 60 * 60 * 6, fetchMonth);
+/** 다음 달 이후 일정은 자주 안 바뀌어서 30분 */
+const monthFuture = cached("kl-month-future-v1", 60 * 30, fetchMonth);
 
 /** from~to (YYYY-MM-DD) 사이 K리그1·2 경기 */
 export async function kleagueGames(from: string, to: string): Promise<KGame[]> {
@@ -111,7 +131,7 @@ export async function kleagueGames(from: string, to: string): Promise<KGame[]> {
   const cur = now.getUTCFullYear() * 12 + now.getUTCMonth() + 1;
   const lists = await Promise.all(
     months.flatMap(([yy, mm]) =>
-      [1, 2].map((league) => (yy * 12 + mm < cur ? monthPast : monthLive)(league, yy, mm).catch(() => [] as KGame[])),
+      [1, 2].map((league) => (yy * 12 + mm < cur ? monthPast : yy * 12 + mm > cur ? monthFuture : monthLive)(league, yy, mm).catch(() => [] as KGame[])),
     ),
   );
   return lists.flat().filter((g) => g.gameDate >= from && g.gameDate <= to);
@@ -184,6 +204,8 @@ export interface KScorer {
   goals: number;
   assists: number;
   apps: number;
+  /** 공격포인트 (득점+도움) */
+  points: number;
 }
 
 interface KlPlayer {
@@ -194,12 +216,15 @@ interface KlPlayer {
   goalQty: number | null;
   assistQty: number | null;
   gameQty: number | null;
+  apQty?: number | null;
 }
 
-export const kleagueScorers = cached("kl-scorers-v1", 60 * 30, async (league: number, year: number): Promise<KScorer[]> => {
-  const data = await post<{ list?: KlPlayer[] }>("/record/rankSort.do", JSON.stringify({ year: String(year), leagueId: String(league), recordType: "GOAL" }));
+/** K리그 개인 순위 — GOAL 득점 · ASSIST 도움 · AP 공격포인트 */
+export const kleagueRanking = cached("kl-ranking-v1", 60 * 30, async (league: number, year: number, type: string): Promise<KScorer[]> => {
+  const data = await post<{ list?: KlPlayer[] }>("/record/rankSort.do", JSON.stringify({ year: String(year), leagueId: String(league), recordType: type }));
+  const val = (p: KlPlayer) => (type === "ASSIST" ? p.assistQty : type === "AP" ? p.apQty : p.goalQty) ?? 0;
   return (data.list ?? [])
-    .filter((p) => (p.goalQty ?? 0) > 0)
+    .filter((p) => val(p) > 0)
     .sort((a, b) => a.rank - b.rank)
     .map((p) => ({
       rank: p.rank,
@@ -209,5 +234,8 @@ export const kleagueScorers = cached("kl-scorers-v1", 60 * 30, async (league: nu
       goals: p.goalQty ?? 0,
       assists: p.assistQty ?? 0,
       apps: p.gameQty ?? 0,
+      points: p.apQty ?? (p.goalQty ?? 0) + (p.assistQty ?? 0),
     }));
 });
+
+export const kleagueScorers = (league: number, year: number) => kleagueRanking(league, year, "GOAL");

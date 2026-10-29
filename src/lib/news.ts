@@ -363,3 +363,10 @@ export async function getNews(): Promise<NewsTopic[]> {
     }),
   );
 }
+
+/** 검색어로 한국어 뉴스 (축구 리그별 뉴스 등에서 씀) */
+export async function searchNews(query: string, days = 3, n = 8): Promise<NewsItem[]> {
+  const items = await search(query, days);
+  // 같은 소식을 여러 언론사가 쓴 건 하나만
+  return pickDistinct(uniqueByTitle(items).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)), n);
+}

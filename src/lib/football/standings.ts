@@ -10,7 +10,7 @@ import { cached } from "./apiFootball";
 import { currentSeason } from "./leagues";
 import type { LeagueId } from "./types";
 import { mfetch } from "@/lib/server/monitor";
-import { kleagueRank, kleagueScorers } from "./kleague";
+import { kleagueRank, kleagueRanking, kleagueScorers } from "./kleague";
 
 export type Zone = "top" | "second" | "third" | "playoff" | "relegation" | null;
 
@@ -31,6 +31,8 @@ export interface StandingRow {
   form: ("W" | "D" | "L")[];
   zone: Zone;
   zoneLabel?: string;
+  /** 지난 라운드보다 오른 계단(+)·내려간 계단(-) — ESPN 리그만 */
+  rankChange?: number;
 }
 
 export interface StandingGroup {
@@ -164,6 +166,7 @@ async function espnStandings(league: LeagueId, season: number): Promise<Standing
           form: [],
           zone: z.zone,
           zoneLabel: z.label,
+          rankChange: st.get("rankChange") || undefined,
         };
       })
       .sort((a, b) => a.rank - b.rank),
@@ -244,4 +247,71 @@ export function getStandings(league: LeagueId) {
 
 export function getTopScorers(league: LeagueId) {
   return scorersCached(league, currentSeason(league));
+}
+
+/* ───────── 개인 순위 (득점 · 도움 · 공격포인트) ───────── */
+
+export interface Leader extends Scorer {
+  /** 이 순위표의 값 (골 수, 도움 수, 공격포인트) */
+  value: number;
+  teamId?: string;
+}
+
+export interface Leaders {
+  goals: Leader[];
+  assists: Leader[];
+  /** 공격포인트 — K리그만 공식 순위가 있음 (해외는 득점+도움으로 계산) */
+  points: Leader[];
+}
+
+async function espnLeaders(league: LeagueId): Promise<Leaders> {
+  const slug = ESPN_SLUG[league]!;
+  const j = await getJson<EspnLeaders & { stats?: { name: string; leaders: { value: number; athlete: { id?: string; team?: { id?: string } } }[] }[] }>(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/statistics`,
+  );
+  const list = (name: string): Leader[] =>
+    (j.stats?.find((s) => s.name === name)?.leaders ?? []).slice(0, 20).map((l, i, arr) => {
+      const st = new Map((l.athlete.statistics ?? []).map((s) => [s.name, s.value]));
+      // 같은 값이면 같은 순위
+      const rank = arr.findIndex((x) => x.value === l.value) + 1;
+      return {
+        rank: rank || i + 1,
+        name: l.athlete.displayName,
+        photo: l.athlete.headshot?.href,
+        team: l.athlete.team?.displayName ?? "",
+        teamLogo: l.athlete.team?.logos?.[0]?.href,
+        teamId: (l.athlete.team as { id?: string } | undefined)?.id,
+        goals: st.get("totalGoals") ?? (name === "goalsLeaders" ? l.value : 0),
+        assists: st.get("goalAssists") ?? (name === "assistsLeaders" ? l.value : 0),
+        apps: st.get("appearances") ?? 0,
+        value: l.value,
+      };
+    });
+  const goals = list("goalsLeaders");
+  const assists = list("assistsLeaders");
+  // 공격포인트: 득점·도움 목록에 있는 선수를 합쳐서 계산
+  const byName = new Map<string, Leader>();
+  for (const p of [...goals, ...assists]) {
+    const prev = byName.get(p.name);
+    byName.set(p.name, { ...(prev ?? p), goals: Math.max(prev?.goals ?? 0, p.goals), assists: Math.max(prev?.assists ?? 0, p.assists) });
+  }
+  const pts = [...byName.values()].map((p) => ({ ...p, value: p.goals + p.assists })).sort((a, b) => b.value - a.value || b.goals - a.goals).slice(0, 20);
+  const points = pts.map((p) => ({ ...p, rank: pts.findIndex((x) => x.value === p.value) + 1 }));
+  return { goals, assists, points };
+}
+
+async function kleagueLeaders(league: LeagueId, season: number): Promise<Leaders> {
+  const lid = K_LEAGUE[league]!;
+  const [g, a, p] = await Promise.all(["GOAL", "ASSIST", "AP"].map((t) => kleagueRanking(lid, season, t)));
+  const conv = (list: typeof g, key: "goals" | "assists" | "points"): Leader[] =>
+    list.slice(0, 20).map((x) => ({ rank: x.rank, name: x.name, team: x.teamName, teamLogo: kEmblem(x.teamId), teamId: x.teamId, goals: x.goals, assists: x.assists, apps: x.apps, value: x[key] }));
+  return { goals: conv(g, "goals"), assists: conv(a, "assists"), points: conv(p, "points") };
+}
+
+const leadersCached = cached("leaders-v1", TTL, async (league: LeagueId, season: number) =>
+  K_LEAGUE[league] ? kleagueLeaders(league, season) : espnLeaders(league),
+);
+
+export function getLeaders(league: LeagueId) {
+  return leadersCached(league, currentSeason(league));
 }

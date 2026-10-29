@@ -3,14 +3,14 @@ import { kickoffTime } from "@/lib/football/format";
 import type { Match } from "@/lib/football/types";
 import { Crest } from "./icons";
 
-/** 경기 한 줄. API-Football 경기면 누르면 상세로 이동 */
+/** 경기 한 줄 — 누르면 상세 (API-Football 경기 · ESPN 해외 경기) */
 export default function MatchRow({ m }: { m: Match }) {
   const done = m.status === "finished";
   const live = m.status === "live";
   const hasScore = m.home.score !== null && m.away.score !== null;
   const homeWin = done && hasScore && m.home.score! > m.away.score!;
   const awayWin = done && hasScore && m.away.score! > m.home.score!;
-  const detailId = m.id.startsWith("af-") ? m.id.slice(3) : null;
+  const detailId = m.id.startsWith("af-") ? m.id.slice(3) : m.id.startsWith("espn-") ? m.id : null;
 
   const inner = (
     <>

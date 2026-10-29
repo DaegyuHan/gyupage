@@ -1,5 +1,6 @@
 import BookSettings from "@/components/books/BookSettings";
 import CalendarFeedSettings from "@/components/CalendarFeedSettings";
+import HealthSettings from "@/components/HealthSettings";
 import RequireLogin from "@/components/RequireLogin";
 import WidgetSettings from "@/components/WidgetSettings";
 import HistoryUpload from "@/components/HistoryUpload";
@@ -21,6 +22,7 @@ export default function SettingsPage() {
           <HistoryUpload />
           <WidgetSettings />
           <CalendarFeedSettings />
+          <HealthSettings />
           <MonitorSettings />
         </div>
       </div>

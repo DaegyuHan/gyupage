@@ -27,6 +27,7 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     AND to_regclass('public.notify_log') IS NOT NULL
     AND to_regclass('public.push_subs') IS NOT NULL
     AND to_regclass('public.history_projects') IS NOT NULL
+    AND to_regclass('public.health_daily') IS NOT NULL
     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'kind')
     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'project_id') AS ok`) as { ok: boolean }[];
   if (check?.ok) return;
@@ -132,6 +133,16 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     auth text NOT NULL,
     device text,
     created_at bigint NOT NULL
+  )`;
+  // 아이폰 건강 앱 하루 기록 (단축어가 보내 줌)
+  await sql`CREATE TABLE IF NOT EXISTS health_daily (
+    day text PRIMARY KEY,
+    steps int,
+    sleep_min int,
+    active_kcal int,
+    exercise_min int,
+    distance_km real,
+    updated_at bigint NOT NULL
   )`;
   await sql`CREATE TABLE IF NOT EXISTS prefs (
     key text PRIMARY KEY,
