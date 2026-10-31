@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { kickoffLabel } from "@/lib/football/format";
 import type { Form, MtTeamRef, MyTeam } from "@/lib/myteam/types";
@@ -72,9 +73,12 @@ function NextUp({ team, now }: { team: MyTeam; now: number }) {
   const cd = live ? { big: `${n.goalsFor ?? 0} : ${n.goalsAgainst ?? 0}`, small: "" } : countdown(n.kickoff, now);
   const home = n.home ? team : n.opponent;
   const away = n.home ? n.opponent : team;
+  const Box = n.detailId ? Link : "div";
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl p-4"
+    <Box
+      href={n.detailId ? `/football/match/${n.detailId}` : (undefined as unknown as string)}
+      aria-label={n.detailId ? `${home.name} 대 ${away.name} 경기 상세` : undefined}
+      className={`relative block overflow-hidden rounded-2xl p-4 ${n.detailId ? "transition hover:ring-1 hover:ring-line focus-visible:ring-2 focus-visible:ring-accent" : ""}`}
       style={{ background: `linear-gradient(135deg, color-mix(in oklab, ${team.color} 16%, var(--color-surface)), var(--color-surface) 70%)` }}
     >
       <div className="flex items-center justify-between text-[11px] font-semibold text-ink-2">
@@ -86,7 +90,14 @@ function NextUp({ team, now }: { team: MyTeam; now: number }) {
           )}{" "}
           · <span style={{ color: team.color }}>{team.name}</span>
         </span>
-        <span>{n.competition}</span>
+        <span className="flex items-center gap-1">
+          {n.competition}
+          {n.detailId && (
+            <svg width="6" height="10" viewBox="0 0 8 12" aria-hidden className="text-ink-3">
+              <path d="M1.5 1 6.5 6l-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
       </div>
       <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
@@ -105,7 +116,7 @@ function NextUp({ team, now }: { team: MyTeam; now: number }) {
           <span className="w-full truncate text-[13px] font-bold">{away.name}</span>
         </div>
       </div>
-    </div>
+    </Box>
   );
 }
 

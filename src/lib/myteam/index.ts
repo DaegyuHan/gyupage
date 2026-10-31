@@ -10,6 +10,7 @@ import type { LeagueId } from "../football/types";
 import type { Form, MtMatch, MyTeam } from "./types";
 import { mfetch } from "@/lib/server/monitor";
 import { kleagueGames } from "../football/kleague";
+import { ESPN_SLUG } from "../football/espnDetail";
 
 export * from "./types";
 
@@ -45,6 +46,16 @@ const COMP_KO: [RegExp, string][] = [
   [/Club World Cup/i, "클럽 월드컵"],
   [/Friendly/i, "친선경기"],
 ];
+
+/** 한글 대회 이름 → 상세 페이지가 있는 리그 id (ESPN) */
+const COMP_LEAGUE: Record<string, LeagueId> = {
+  프리미어리그: "PL",
+  분데스리가: "BL1",
+  챔피언스리그: "CL",
+  유로파리그: "EL",
+  "DFB 포칼": "DFB",
+  카라바오컵: "EFL",
+};
 
 export const TEAM_KO: Record<string, string> = {
   // 프리미어리그
@@ -82,6 +93,7 @@ interface EspnCompetitor {
   winner?: boolean;
 }
 interface EspnEvent {
+  id?: string;
   date: string;
   league?: { name?: string };
   competitions: { status?: { type?: { name?: string; completed?: boolean; state?: string } }; competitors: EspnCompetitor[] }[];
@@ -107,9 +119,12 @@ function espnMatch(e: EspnEvent, teamId: string): MtMatch | null {
   if (!me || !op) return null;
   const st = comp.status?.type;
   const state: MtMatch["state"] = st?.completed ? "done" : st?.state === "in" ? "live" : /POSTPONED|CANCELED/.test(st?.name ?? "") ? "off" : "pre";
+  const competition = compKo(e.league?.name ?? "");
+  const league = COMP_LEAGUE[competition];
   return {
     kickoff: e.date,
-    competition: compKo(e.league?.name ?? ""),
+    competition,
+    detailId: e.id && league && ESPN_SLUG[league] ? `espn-${league}-${e.id}` : undefined,
     opponent: {
       name: TEAM_KO[op.team.displayName] ?? op.team.shortDisplayName ?? op.team.displayName,
       logo: op.team.logos?.[0]?.href ?? op.team.logo,
@@ -172,6 +187,7 @@ async function fromNaver(code: string) {
         state,
         goalsFor: state === "pre" ? null : home ? g.homeTeamScore : g.awayTeamScore,
         goalsAgainst: state === "pre" ? null : home ? g.awayTeamScore : g.homeTeamScore,
+        detailId: `kl-${g.gameDateTime.slice(0, 10)}-${g.homeTeamCode}-${g.awayTeamCode}`,
       };
     });
   return { matches, logo };
@@ -227,4 +243,4 @@ async function load(): Promise<MyTeam[]> {
   return ok;
 }
 
-export const getMyTeams = cached("myteam-v6", 60 * 5, load);
+export const getMyTeams = cached("myteam-v7", 60 * 5, load);

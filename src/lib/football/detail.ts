@@ -112,7 +112,7 @@ export interface MatchDetail {
   h2h?: FormGame[];
   videos?: { title: string; href: string; duration?: number; thumb?: string }[];
   news?: { title: string; href: string }[];
-  source?: "API-Football" | "ESPN";
+  source?: "API-Football" | "ESPN" | "K리그";
 }
 
 export interface FormGame {

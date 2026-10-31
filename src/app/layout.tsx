@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import Nav from "@/components/Nav";
 import { themeInitScript } from "@/lib/theme";
+import pkg from "../../package.json";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -45,7 +46,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen">
         <Nav />
-        <main className="mx-auto max-w-[1440px] px-4 pb-32 sm:px-8 md:pb-16">{children}</main>
+        <main className="mx-auto max-w-[1440px] px-4 pb-10 sm:px-8 md:pb-12">{children}</main>
+        {/* 버전: 커밋할 때 package.json 의 version 을 올려요 (v0.0.3 → v0.0.4 …) */}
+        <footer className="pb-28 text-center text-[11px] tracking-wide text-ink-3/70 md:pb-6">v{pkg.version}</footer>
       </body>
     </html>
   );

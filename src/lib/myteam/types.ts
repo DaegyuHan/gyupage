@@ -16,6 +16,8 @@ export interface MtMatch {
   /** 우리 팀 기준 득점·실점 (경기 전이면 null) */
   goalsFor: number | null;
   goalsAgainst: number | null;
+  /** 경기 상세 페이지 id (/football/match/{id}) — 없으면 상세 없음 */
+  detailId?: string;
 }
 
 export interface MyTeam {
