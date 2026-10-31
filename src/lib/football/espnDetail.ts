@@ -22,7 +22,12 @@ export const ESPN_SLUG: Partial<Record<LeagueId, string>> = {
 interface EspnPerson {
   displayName?: string;
 }
+interface EspnMoney {
+  moneyLine?: number;
+}
 interface EspnSummary {
+  /** 북메이커 배당 (미국식 머니라인) — 무료 */
+  pickcenter?: { provider?: { name?: string }; overUnder?: number; homeTeamOdds?: EspnMoney; awayTeamOdds?: EspnMoney; drawOdds?: EspnMoney }[];
   header?: {
     season?: { name?: string };
     competitions?: {
@@ -278,8 +283,21 @@ function toDetail(league: LeagueId, eventId: string, j: EspnSummary): MatchDetai
       .slice(0, 5)
       .map((a) => ({ title: a.headline ?? "", href: a.links?.web?.href ?? "" }))
       .filter((a) => a.title && a.href),
+    odds: oddsOf(j),
     source: "ESPN",
   };
+}
+
+/** 미국식 머니라인(-330, +450) → 소수 배당(1.30, 5.50) */
+const decimal = (ml?: number) => (typeof ml !== "number" || ml === 0 ? undefined : Math.round((ml < 0 ? 1 + 100 / -ml : 1 + ml / 100) * 100) / 100);
+
+function oddsOf(j: EspnSummary): MatchDetail["odds"] {
+  const o = j.pickcenter?.[0];
+  const home = decimal(o?.homeTeamOdds?.moneyLine);
+  const draw = decimal(o?.drawOdds?.moneyLine);
+  const away = decimal(o?.awayTeamOdds?.moneyLine);
+  if (!home || !draw || !away) return undefined;
+  return { provider: o?.provider?.name ?? "북메이커", home, draw, away, overUnder: o?.overUnder };
 }
 
 const summary = cached("espn-summary-v1", 90, async (league: LeagueId, eventId: string): Promise<MatchDetail | null> => {

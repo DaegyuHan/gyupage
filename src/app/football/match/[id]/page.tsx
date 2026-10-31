@@ -8,42 +8,17 @@ import Scoreboard from "@/components/football/Scoreboard";
 import StatBars from "@/components/football/StatBars";
 import Tabs from "@/components/football/Tabs";
 import Timeline from "@/components/football/Timeline";
-import { getMatchDetail, type MatchDetail } from "@/lib/football/detail";
-import { getEspnDetail } from "@/lib/football/espnDetail";
-import { getKleagueDetail } from "@/lib/football/kleagueDetail";
+import type { MatchDetail } from "@/lib/football/detail";
+import { loadDetail } from "@/lib/football/loadDetail";
 import MatchExtras from "@/components/football/MatchExtras";
+import PredictBox from "@/components/football/PredictBox";
 import { kickoffLabel, roundLabel } from "@/lib/football/format";
 import { LEAGUE_MAP } from "@/lib/football/leagues";
 
 type Params = { params: Promise<{ id: string }> };
 
 // 메타데이터와 본문이 같은 요청에서 두 번 부르지 않도록 요청 단위로 묶음
-const load = cache(async (idText: string): Promise<{ d: MatchDetail | null; error?: string }> => {
-  // ESPN 해외 경기: /football/match/espn-PL-401921834
-  if (idText.startsWith("espn-")) {
-    try {
-      return { d: await getEspnDetail(idText) };
-    } catch {
-      return { d: null, error: "경기 정보를 불러오지 못했어요." };
-    }
-  }
-  // K리그 경기: /football/match/kl-2026-11-01-02-07
-  if (idText.startsWith("kl-")) {
-    try {
-      return { d: await getKleagueDetail(idText) };
-    } catch {
-      return { d: null, error: "경기 정보를 불러오지 못했어요." };
-    }
-  }
-  const id = Number(idText);
-  if (!Number.isInteger(id) || id <= 0) return { d: null };
-  try {
-    return { d: await getMatchDetail(id) };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { d: null, error: msg === "NO_KEY" ? "API 키가 없어서 경기 상세를 볼 수 없어요." : "경기 정보를 불러오지 못했어요." };
-  }
-});
+const load = cache(loadDetail);
 
 export async function generateMetadata({ params }: Params) {
   const { id } = await params;
@@ -96,6 +71,8 @@ export default async function MatchPage({ params }: Params) {
       ) : (
         <div className="mt-5 space-y-10">
           <Scoreboard d={d} />
+
+          <PredictBox matchId={id} kickoff={d.kickoff} status={d.status} home={{ name: d.home.name, score: d.home.score }} away={{ name: d.away.name, score: d.away.score }} />
 
           {d.status === "live" && <AutoRefresh seconds={300} />}
 

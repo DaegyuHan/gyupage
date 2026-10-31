@@ -50,6 +50,8 @@ function parse(file: string, raw: string): CsNote | null {
   if (!data.title || !interview || !quiz) return null;
   return {
     date,
+    model: typeof data.model === "string" ? data.model : undefined,
+    usage: data.usage && typeof data.usage === "object" ? (data.usage as CsNote["usage"]) : undefined,
     no: Number(data.no) || 0,
     category,
     title: String(data.title),
@@ -81,6 +83,11 @@ function readAll(): CsNote[] {
 /** 진짜 글이 하나도 없으면 예시 글 */
 export function isCsSample() {
   return readAll().length === 0;
+}
+
+/** 실제 글만 (예시 글 제외) — AI 사용량 계산용 */
+export function getRealCsNotes(): CsNote[] {
+  return readAll();
 }
 
 /** 최신 글이 맨 앞 */

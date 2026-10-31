@@ -28,6 +28,7 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     AND to_regclass('public.push_subs') IS NOT NULL
     AND to_regclass('public.history_projects') IS NOT NULL
     AND to_regclass('public.health_daily') IS NOT NULL
+    AND to_regclass('public.ai_predictions') IS NOT NULL
     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'kind')
     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'history_docs' AND column_name = 'project_id') AS ok`) as { ok: boolean }[];
   if (check?.ok) return;
@@ -143,6 +144,12 @@ async function ensureSchema(sql: ReturnType<typeof neon>) {
     exercise_min int,
     distance_km real,
     updated_at bigint NOT NULL
+  )`;
+  // 축구 경기 AI 승부 예측 (Claude 결과를 경기별로 저장해서 다시 부르지 않음)
+  await sql`CREATE TABLE IF NOT EXISTS ai_predictions (
+    match_id text PRIMARY KEY,
+    data jsonb NOT NULL,
+    created_at bigint NOT NULL
   )`;
   await sql`CREATE TABLE IF NOT EXISTS prefs (
     key text PRIMARY KEY,

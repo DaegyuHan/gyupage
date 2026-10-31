@@ -60,6 +60,14 @@ export default async function FootballPage({ searchParams }: Props) {
               </li>
             );
           })}
+          <li>
+            <Link
+              href="/football/predictions"
+              className="flex items-center gap-1.5 rounded-full border border-dashed border-line px-4 py-2 text-sm font-semibold text-ink-2 transition-colors hover:border-accent hover:text-accent"
+            >
+              🤖 AI 예측 성적
+            </Link>
+          </li>
         </ul>
       </nav>
 

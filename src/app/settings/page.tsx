@@ -5,6 +5,7 @@ import RequireLogin from "@/components/RequireLogin";
 import WidgetSettings from "@/components/WidgetSettings";
 import HistoryUpload from "@/components/HistoryUpload";
 import MonitorSettings from "@/components/MonitorSettings";
+import AiUsageSettings from "@/components/AiUsageSettings";
 import PushSettings from "@/components/PushSettings";
 
 export const metadata = { title: "설정 | 규페이지" };
@@ -24,6 +25,7 @@ export default function SettingsPage() {
           <CalendarFeedSettings />
           <HealthSettings />
           <MonitorSettings />
+          <AiUsageSettings />
         </div>
       </div>
     </RequireLogin>

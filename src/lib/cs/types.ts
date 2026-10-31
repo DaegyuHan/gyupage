@@ -12,6 +12,9 @@ export interface CsQuiz {
 export interface CsNote {
   /** YYYY-MM-DD (KST) — 주소로도 씀 */
   date: string;
+  /** 만든 모델과 토큰 사용량 (2026-11 부터 기록) */
+  model?: string;
+  usage?: { input: number; output: number };
   /** 몇 번째 글인지 */
   no: number;
   category: CsCategory;

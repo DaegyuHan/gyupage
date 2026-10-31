@@ -173,7 +173,10 @@ async function callClaude(prompt) {
   const call = j.content.find((c) => c.type === "tool_use" && c.name === "save_note");
   if (!call) throw new Error(`도구 호출이 없어요 (stop_reason: ${j.stop_reason})`);
   if (j.stop_reason === "max_tokens") throw new Error("글이 너무 길어서 잘렸어요");
-  return assemble(call.input);
+  const note = assemble(call.input);
+  // 설정 > AI 사용량에서 비용 계산용
+  note.usage = { input: j.usage?.input_tokens ?? 0, output: j.usage?.output_tokens ?? 0 };
+  return note;
 }
 
 function validate(n) {
@@ -206,7 +209,7 @@ minutes: ${Math.min(10, Math.max(2, Number(n.minutes) || 4))}
 keywords: ${j(n.keywords.slice(0, 6))}
 interview: ${j(n.interview)}
 quiz: ${j(n.quiz)}
-model: ${j(MODEL)}
+model: ${j(MODEL)}${n.usage ? `\nusage: ${j(n.usage)}` : ""}
 ---
 ${n.body.trim()}
 

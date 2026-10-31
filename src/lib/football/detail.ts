@@ -112,6 +112,8 @@ export interface MatchDetail {
   h2h?: FormGame[];
   videos?: { title: string; href: string; duration?: number; thumb?: string }[];
   news?: { title: string; href: string }[];
+  /** 북메이커 배당 (소수 배당) — ESPN 경기만 */
+  odds?: { provider: string; home: number; draw: number; away: number; overUnder?: number };
   source?: "API-Football" | "ESPN" | "K리그";
 }
 
