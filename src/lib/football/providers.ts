@@ -1,6 +1,6 @@
 import { addDays, kstDate } from "./kst";
 import { AF_SAVER, afGet, cached, TTL } from "./apiFootball";
-import { API_FOOTBALL_LEAGUES, FOOTBALL_DATA_CODES, teamName } from "./leagues";
+import { API_FOOTBALL_LEAGUES, FOOTBALL_DATA_CODES, koreanTeamName, teamName } from "./leagues";
 import type { Match, MatchStatus } from "./types";
 import { mfetch } from "@/lib/server/monitor";
 import { kleagueGames } from "./kleague";
@@ -121,7 +121,8 @@ interface NaverGame {
 
 /** 팀 이름 맞추기: 우리 표기(수원 삼성) ↔ 네이버 표기(수원) */
 function normK(name: string) {
-  const n = name.replace(/\s+/g, "");
+  // 영어로 온 이름(Suwon Samsung Bluewings 등)도 한글로 바꾼 뒤 비교
+  const n = koreanTeamName(name).replace(/\s+/g, "");
   const alias: Record<string, string> = { 수원삼성: "수원", 울산HD: "울산", FC서울: "서울", 서울이랜드: "서울E", 김천상무: "김천" };
   return alias[n] ?? n;
 }

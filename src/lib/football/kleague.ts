@@ -7,6 +7,7 @@
  */
 import { cached } from "./apiFootball";
 import { mfetch } from "@/lib/server/monitor";
+import { koreanTeamName } from "./leagues";
 
 const BASE = "https://www.kleague.com";
 const HEADERS = {
@@ -15,6 +16,8 @@ const HEADERS = {
   Origin: BASE,
   Accept: "application/json, text/javascript, */*; q=0.01",
   "X-Requested-With": "XMLHttpRequest",
+  // 해외(Vercel 미국) 서버에서 부르면 영문 이름이 올 수 있어서 한국어로 고정
+  "Accept-Language": "ko-KR,ko;q=0.9",
 };
 
 /** 네이버 일정과 같은 모양으로 맞춘 경기 하나 */
@@ -86,10 +89,10 @@ function toGame(g: KlSchedule): KGame {
     gameDateTime: `${date}T${g.gameTime || "00:00"}:00`,
     categoryId: g.leagueId === 1 ? "kleague" : "kleague2",
     homeTeamCode: code(g.homeTeam),
-    homeTeamName: g.homeTeamName,
+    homeTeamName: koreanTeamName(g.homeTeamName),
     homeTeamScore: g.homeGoal ?? 0,
     awayTeamCode: code(g.awayTeam),
-    awayTeamName: g.awayTeamName,
+    awayTeamName: koreanTeamName(g.awayTeamName),
     awayTeamScore: g.awayGoal ?? 0,
     statusCode: status,
     round: g.roundId || undefined,
@@ -109,10 +112,10 @@ const fetchMonth = async (league: number, year: number, month: number) => {
   return (data.scheduleList ?? []).map(toGame);
 };
 // 지난 달은 거의 안 바뀌니 오래, 이번 달은 1분
-const monthLive = cached("kl-month-live-v1", 60, fetchMonth);
-const monthPast = cached("kl-month-past-v1", 60 * 60 * 6, fetchMonth);
+const monthLive = cached("kl-month-live-v2", 60, fetchMonth);
+const monthPast = cached("kl-month-past-v2", 60 * 60 * 6, fetchMonth);
 /** 다음 달 이후 일정은 자주 안 바뀌어서 30분 */
-const monthFuture = cached("kl-month-future-v1", 60 * 30, fetchMonth);
+const monthFuture = cached("kl-month-future-v2", 60 * 30, fetchMonth);
 
 /** from~to (YYYY-MM-DD) 사이 K리그1·2 경기 */
 export async function kleagueGames(from: string, to: string): Promise<KGame[]> {
