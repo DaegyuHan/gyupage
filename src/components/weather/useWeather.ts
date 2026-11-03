@@ -5,16 +5,25 @@ import { api, useAuth } from "@/lib/auth-client";
 import type { WeatherResponse } from "@/lib/weather";
 
 const KEY = "gyupage.weatherPlace";
+/** 마지막으로 GPS 로 잡은 위치 (이 시간 안이면 다시 묻지 않음) */
+const GPS_KEY = "gyupage.lastGps";
+const GPS_TTL = 6 * 3600_000;
 
 export interface Place {
   name: string;
   lat: number;
   lon: number;
+  /** IP 로 잡은 대략적인 위치 (GPS 아님) */
+  approx?: boolean;
 }
 
 /**
  * 날씨 + 위치
- * - 기본: 지금 있는 곳(내 위치, 들어올 때마다 GPS 로 다시 잡음). 위치를 못 쓰면 수원.
+ * - 기본: 지금 있는 곳 — 들어올 때마다 위치 권한을 묻지 않도록
+ *   ① 6시간 안에 GPS 로 잡은 위치가 있으면 그걸
+ *   ② 이미 위치 권한을 허용해 둔 기기면 조용히 GPS
+ *   ③ 아니면 접속 IP 로 대략적인 도시 (권한 창 없음)
+ *   GPS 권한은 '내 위치'를 눌렀을 때만 물어봄. 모두 실패하면 수원.
  * - '수원으로'를 누르면 수원으로 고정 (로그인하면 DB 에 저장돼서 모든 기기에서 같게)
  * 저장값: null = 내 위치(자동), {name, lat, lon} = 고정한 곳
  */
@@ -54,6 +63,13 @@ export function useWeather() {
   const locate = useCallback(() => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) return;
     setLocating(true);
+    const remember = (p: Place) => {
+      try {
+        localStorage.setItem(GPS_KEY, JSON.stringify({ ...p, at: Date.now() }));
+      } catch {
+        /* 무시 */
+      }
+    };
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
@@ -61,12 +77,16 @@ export function useWeather() {
         const lat = Math.round(pos.coords.latitude * 100) / 100;
         const lon = Math.round(pos.coords.longitude * 100) / 100;
         setHere({ name: "내 위치", lat, lon });
+        remember({ name: "내 위치", lat, lon });
         // 동네 이름 붙이기 (키 없이 쓰는 무료 역지오코딩, 실패하면 '내 위치' 그대로)
         fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=ko`)
           .then((r) => (r.ok ? r.json() : null))
           .then((j: { city?: string; locality?: string; principalSubdivision?: string } | null) => {
             const name = j?.locality || j?.city || j?.principalSubdivision;
-            if (name) setHere({ name, lat, lon });
+            if (name) {
+              setHere({ name, lat, lon });
+              remember({ name, lat, lon });
+            }
           })
           .catch(() => {});
       },
@@ -75,9 +95,48 @@ export function useWeather() {
     );
   }, []);
 
-  // 고정한 곳이 없으면 들어올 때 내 위치를 잡음
+  // 고정한 곳이 없으면 들어올 때 내 위치를 잡음 (권한 창은 띄우지 않음)
   useEffect(() => {
-    if (ready && !fixed && !here) locate();
+    if (!ready || fixed || here) return;
+    let cancelled = false;
+    (async () => {
+      // ① 최근 GPS
+      try {
+        const raw = localStorage.getItem(GPS_KEY);
+        const c = raw ? (JSON.parse(raw) as Place & { at: number }) : null;
+        if (c && Date.now() - c.at < GPS_TTL) {
+          setHere({ name: c.name, lat: c.lat, lon: c.lon });
+          return;
+        }
+      } catch {
+        /* 무시 */
+      }
+      // ② 이미 허용된 기기면 조용히 GPS (묻는 창이 안 뜸)
+      const state = await navigator.permissions?.query({ name: "geolocation" as PermissionName }).then((s) => s.state).catch(() => null);
+      if (cancelled) return;
+      if (state === "granted") {
+        locate();
+        return;
+      }
+      // ③ 접속 IP 로 대략적인 도시
+      const g = await fetch("/api/geo", { cache: "no-store" })
+        .then((r) => (r.ok ? (r.json() as Promise<{ lat: number | null; lon: number | null; city: string | null }>) : null))
+        .catch(() => null);
+      if (cancelled || g?.lat == null || g.lon == null) return;
+      const { lat, lon } = g;
+      setHere({ name: g.city ?? "내 근처", lat, lon, approx: true });
+      // 한글 지역 이름 (무료 역지오코딩)
+      fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=ko`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { city?: string; locality?: string; principalSubdivision?: string } | null) => {
+          const name = j?.city || j?.locality || j?.principalSubdivision;
+          if (name && !cancelled) setHere((h) => (h?.approx ? { ...h, name } : h));
+        })
+        .catch(() => {});
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [ready, fixed, here, locate]);
 
   const place = fixed ?? here; // 둘 다 없으면 서버 기본(수원)
@@ -122,8 +181,10 @@ export function useWeather() {
     failed,
     place,
     placeName: place?.name ?? "수원",
-    /** 지금 내 위치 날씨를 보고 있는지 */
-    isHere: !fixed && !!here,
+    /** 지금 내 위치(GPS) 날씨를 보고 있는지 */
+    isHere: !fixed && !!here && !here.approx,
+    /** IP 로 잡은 대략적인 위치인지 */
+    isApprox: !fixed && !!here?.approx,
     locating,
     useMyLocation,
     resetPlace,

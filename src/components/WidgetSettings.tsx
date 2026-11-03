@@ -35,7 +35,7 @@ export default function WidgetSettings() {
     <section id="widget" className="scroll-mt-6">
       <h2 className="text-xl font-extrabold tracking-tight">아이폰 위젯</h2>
       <p className="mt-1 text-sm text-ink-2">
-        &lsquo;오늘 꼭 할 일&rsquo;을 아이폰 홈 화면·잠금 화면 위젯으로 볼 수 있어요. 무료 앱 <b>Scriptable</b> 이 위젯을 그려 줘요.
+        &lsquo;오늘 할 일&rsquo;을 아이폰 홈 화면·잠금 화면 위젯으로 볼 수 있어요. 무료 앱 <b>Scriptable</b> 이 위젯을 그려 줘요.
       </p>
 
       <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -69,7 +69,7 @@ export default function WidgetSettings() {
         <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5">
           <div className="rounded-xl bg-[#141c2b] p-4 text-[13px] text-[#e8ecf3]">
             <div className="flex items-center gap-1.5 font-bold">
-              오늘 꼭 할 일 <span className="text-[8px] text-[#7d95ff]">●</span>
+              오늘 할 일 <span className="text-[8px] text-[#7d95ff]">●</span>
               <span className="ml-auto text-[#7d95ff]">1/3</span>
             </div>
             <div className="mt-0.5 text-[11px] text-[#8a94a6]">위젯 미리보기</div>

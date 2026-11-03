@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import LiveMarkdownEditor from "@/components/editor/LiveMarkdownEditor";
 import { DateRangeField, TimeField } from "./pickers";
+import ProjectPhases from "./ProjectPhases";
+import { emptyPlan, parsePhase, planOf, type PhasePlan, type ProjectSave } from "@/lib/projectPhases";
 import { CATEGORIES, CATEGORY_MAP } from "@/lib/categories";
 import type { EventInput } from "@/lib/eventStore";
 import type { CalendarEvent, CategoryId } from "@/lib/types";
@@ -27,6 +29,10 @@ interface Props {
   onClose: () => void;
   onSave: (input: EventInput) => void;
   onDelete?: () => void;
+  /** 프로젝트 단계 저장용: 지금 있는 프로젝트 일정들 */
+  projectEvents?: CalendarEvent[];
+  /** 프로젝트를 단계별(개발·SIT·UAT·PVT·대고객 오픈)로 저장 */
+  onSaveProject?: (s: ProjectSave) => void;
 }
 
 /** 오른쪽에서 열리는 작성 패널 */
@@ -38,6 +44,8 @@ export default function EventModal({
   onClose,
   onSave,
   onDelete,
+  projectEvents = [],
+  onSaveProject,
 }: Props) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<CategoryId>(defaultCategory);
@@ -47,6 +55,10 @@ export default function EventModal({
   const [memo, setMemo] = useState("");
   const [done, setDone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** 프로젝트를 단계별로 입력하는 중인지 */
+  const [planMode, setPlanMode] = useState(false);
+  const [plan, setPlan] = useState<PhasePlan>(emptyPlan);
+  const [originalName, setOriginalName] = useState<string | undefined>(undefined);
   /** 열었을 때 값 — 바뀐 게 없으면 닫을 때 저장 안 함 */
   const initial = useRef("");
   /** Esc 로 닫을 때도 자동 저장하려고 최신 함수를 담아 둠 */
@@ -54,7 +66,14 @@ export default function EventModal({
 
   useEffect(() => {
     if (!open) return;
-    setTitle(editing?.title ?? "");
+    // 프로젝트: 새로 만들거나, 'ㅇㅇ 개발/SIT/…' 처럼 단계 일정을 열면 단계별 입력
+    const parsed = editing?.category === "project" ? parsePhase(editing.title) : null;
+    const pm = (!editing && defaultCategory === "project") || !!parsed;
+    const pl = parsed ? planOf(projectEvents, parsed.name) : emptyPlan();
+    setPlanMode(pm);
+    setPlan(pl);
+    setOriginalName(parsed?.name);
+    setTitle(parsed ? parsed.name : (editing?.title ?? ""));
     setCategory(editing?.category ?? defaultCategory);
     setStart(editing?.start ?? defaultDate);
     setEnd(editing?.end ?? defaultDate);
@@ -63,7 +82,8 @@ export default function EventModal({
     const m = editing?.memo ?? (!editing && defaultCategory === "devlog" ? DEVLOG_TEMPLATE : "");
     setMemo(m);
     setConfirmDelete(false);
-    initial.current = JSON.stringify([editing?.title ?? "", editing?.category ?? defaultCategory, editing?.start ?? defaultDate, editing?.end ?? defaultDate, editing?.time ?? "", m, !!editing?.done]);
+    initial.current = JSON.stringify([parsed ? parsed.name : (editing?.title ?? ""), editing?.category ?? defaultCategory, editing?.start ?? defaultDate, editing?.end ?? defaultDate, editing?.time ?? "", m, !!editing?.done, pm, pl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing, defaultDate, defaultCategory]);
 
   useEffect(() => {
@@ -82,6 +102,15 @@ export default function EventModal({
   if (!open) return null;
 
   const c = CATEGORY_MAP[category];
+  const isPlan = category === "project" && planMode && !!onSaveProject;
+
+  /** 단계별 프로젝트 저장 (이름이 없으면 false) */
+  const savePlan = () => {
+    const name = title.trim();
+    if (!name || !onSaveProject) return false;
+    onSaveProject({ name, original: originalName, plan });
+    return true;
+  };
 
   /** 지금 입력값 → 저장할 값 (제목이 없어 저장할 수 없으면 null) */
   const build = (): EventInput | null => {
@@ -103,6 +132,10 @@ export default function EventModal({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPlan) {
+      savePlan();
+      return;
+    }
     const input = build();
     if (input) onSave(input);
   };
@@ -113,9 +146,13 @@ export default function EventModal({
    * - 새 일정인데 아무것도 안 적었으면(템플릿 그대로) 만들지 않음
    */
   const closeWithSave = () => {
-    const now = JSON.stringify([title, category, start, end, time, memo, done]);
+    const now = JSON.stringify([title, category, start, end, time, memo, done, planMode, plan]);
     if (now === initial.current) return onClose();
     if (!editing && !title.trim() && isBlankMemo(memo)) return onClose();
+    if (isPlan) {
+      if (!savePlan()) onClose();
+      return;
+    }
     const input = build();
     if (input) onSave(input);
     else onClose();
@@ -142,6 +179,7 @@ export default function EventModal({
                   onClick={() => {
                     setCategory(cat.id);
                     if (cat.id === "devlog" && !memo) setMemo(DEVLOG_TEMPLATE);
+                    if (cat.id === "project" && !editing) setPlanMode(true);
                   }}
                   aria-pressed={on}
                   className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
@@ -189,11 +227,32 @@ export default function EventModal({
                 다 했어요
               </label>
               <p className="mt-6 rounded-xl bg-sunken/60 px-4 py-3 text-xs leading-relaxed text-ink-2">
-                할일은 홈의 &lsquo;오늘 꼭 할 일&rsquo;과 같은 목록이에요. 여기서 추가하면 그날 홈에도 나오고, 홈에서 적은 할 일도 여기에 보여요.
+                할일은 홈의 &lsquo;오늘 할 일&rsquo;과 같은 목록이에요. 여기서 추가하면 그날 홈에도 나오고, 홈에서 적은 할 일도 여기에 보여요.
               </p>
+            </>
+          ) : isPlan ? (
+            <>
+              <ProjectPhases plan={plan} defaultDate={defaultDate} onChange={setPlan} />
+              <p className="mt-4 rounded-xl bg-sunken/60 px-4 py-3 text-xs leading-relaxed text-ink-2">
+                캘린더에는 단계마다 &lsquo;{title.trim() || "프로젝트 이름"} SIT&rsquo;처럼 따로 나와요. 미정인 단계는 날짜를 정하면 그때 생겨요.
+              </p>
+              {editing ? (
+                <button type="button" onClick={() => setPlanMode(false)} className="mt-3 text-xs font-semibold text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+                  이 일정만 따로 수정 (메모·시간)
+                </button>
+              ) : (
+                <button type="button" onClick={() => setPlanMode(false)} className="mt-3 text-xs font-semibold text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+                  단계 없이 기간 하나로 만들기
+                </button>
+              )}
             </>
           ) : (
             <>
+          {category === "project" && !editing && onSaveProject && (
+            <button type="button" onClick={() => setPlanMode(true)} className="mt-3 text-xs font-semibold text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+              개발 · SIT · UAT · PVT · 대고객 오픈 단계별로 나누기
+            </button>
+          )}
           <dl className="mt-4 grid grid-cols-[64px_1fr] items-center gap-y-1 text-sm">
             <dt className="text-ink-2">날짜</dt>
             <dd className="-ml-2.5">
@@ -230,8 +289,12 @@ export default function EventModal({
           {editing && onDelete ? (
             confirmDelete ? (
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-ink-2">정말 삭제할까요?</span>
-                <button type="button" onClick={onDelete} className="font-semibold text-[#d4483b] hover:underline">
+                <span className="text-ink-2">{isPlan ? "프로젝트의 모든 단계를 삭제할까요?" : "정말 삭제할까요?"}</span>
+                <button
+                  type="button"
+                  onClick={isPlan && originalName ? () => onSaveProject?.({ name: originalName, original: originalName, plan: emptyPlan() }) : onDelete}
+                  className="font-semibold text-[#d4483b] hover:underline"
+                >
                   삭제
                 </button>
                 <button type="button" onClick={() => setConfirmDelete(false)} className="text-ink-2 hover:underline">

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useAuth } from "@/lib/auth-client";
 import { fromKey, todayKey, toKey } from "@/lib/date";
 
-/** 오늘 꼭 할 일 — 가볍게 적고 체크. DB 에 날짜별로 저장 (어느 기기에서든 같음) */
+/** 오늘 할 일 — 가볍게 적고 체크. DB 에 날짜별로 저장 (어느 기기에서든 같음) */
 interface Todo {
   id: string;
   text: string;
@@ -82,7 +82,7 @@ export default function TodayTodos() {
   if (!auth.loading && !auth.authed) {
     return (
       <div className="mt-5 w-full max-w-[520px]">
-        <h2 className="mb-2 text-sm font-bold">오늘 꼭 할 일</h2>
+        <h2 className="mb-2 text-sm font-bold">오늘 할 일</h2>
         <Link
           href="/login?next=/"
           className="flex items-center gap-2 rounded-xl border border-dashed border-line px-3 py-2.5 text-sm text-ink-3 hover:border-accent hover:text-accent"
@@ -96,7 +96,7 @@ export default function TodayTodos() {
   return (
     <div className="mt-5 w-full max-w-[520px]">
       <div className="mb-2 flex items-baseline gap-2">
-        <h2 className="text-sm font-bold">오늘 꼭 할 일</h2>
+        <h2 className="text-sm font-bold">오늘 할 일</h2>
         {list.length > 0 && (
           <span className="numeral text-xs font-semibold tabular-nums text-ink-3">
             {doneCount}/{list.length}
@@ -161,7 +161,7 @@ export default function TodayTodos() {
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={list.length ? "하나 더 적기" : "오늘 꼭 해야 할 일"}
+            placeholder={list.length ? "하나 더 적기" : "오늘 해야 할 일"}
             maxLength={80}
             // 테두리 상자가 이미 포커스를 보여줘서 입력칸 자체 테두리는 끔
             style={{ outline: "none" }}

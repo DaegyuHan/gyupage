@@ -8,13 +8,15 @@ interface Props {
   failed: boolean;
   placeName: string;
   isMine: boolean;
+  /** 접속 IP 로 잡은 대략적인 위치 */
+  isApprox?: boolean;
   locating: boolean;
   onUseMyLocation: () => void;
   onReset: () => void;
 }
 
 /** "수원 · 지금 20° 맑음" + 위치 바꾸기 */
-export default function WeatherNow({ data, failed, placeName, isMine, locating, onUseMyLocation, onReset }: Props) {
+export default function WeatherNow({ data, failed, placeName, isMine, isApprox, locating, onUseMyLocation, onReset }: Props) {
   return (
     <div className="flex items-center gap-1 rounded-full bg-sunken py-1 pl-2.5 pr-1 text-sm">
       {failed ? (
@@ -24,7 +26,7 @@ export default function WeatherNow({ data, failed, placeName, isMine, locating, 
       ) : (
         <span
           className="flex items-center gap-1.5"
-          title={`체감 ${data.current.feels}°`}
+          title={`체감 ${data.current.feels}°${isApprox ? " · 접속 위치 기준 (대략) — '내 위치'를 누르면 정확하게" : ""}`}
         >
           <WeatherIcon code={data.current.code} size={18} night={!data.current.isDay} />
           <span className="font-semibold">{placeName}</span>

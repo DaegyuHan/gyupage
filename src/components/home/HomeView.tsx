@@ -70,6 +70,7 @@ export default function HomeView() {
                 failed={weather.failed}
                 placeName={weather.placeName}
                 isMine={weather.isHere}
+                isApprox={weather.isApprox}
                 locating={weather.locating}
                 onUseMyLocation={weather.useMyLocation}
                 onReset={weather.resetPlace}
