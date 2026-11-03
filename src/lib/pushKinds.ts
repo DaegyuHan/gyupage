@@ -1,6 +1,6 @@
 /** 받을 수 있는 푸시 알림 종류 (화면·서버 같이 씀) */
 export const PUSH_KINDS = [
-  { id: "brief", label: "아침 브리핑", desc: "오전 8시 30분 · 오늘 일정과 할 일" },
+  { id: "brief", label: "아침 브리핑", desc: "오전 8시 30분 · 오늘 약속과 할 일" },
   { id: "event", label: "일정 알림", desc: "시간 있는 일정 30분 전" },
   { id: "match", label: "킥오프 알림", desc: "응원 팀 경기 30분 전" },
   { id: "result", label: "경기 결과", desc: "응원 팀 경기가 끝나면" },

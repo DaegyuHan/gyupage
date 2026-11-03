@@ -29,6 +29,10 @@ async function handle(req: Request) {
       const sql = await db();
       await sql`INSERT INTO notify_log (key, at) VALUES ('cron:last', ${Date.now()}) ON CONFLICT (key) DO UPDATE SET at = EXCLUDED.at`;
     }
+    // 일부 알림만 실패한 경우도 디스코드로 알림 (1시간에 한 번)
+    if (result.errors?.length && hasDiscord() && (await once("err:cron-step", 3600_000).catch(() => false))) {
+      await sendDiscord({ embeds: [{ title: "⚠️ 알림 일부 실패", color: COLOR.red, description: "```\n" + result.errors.join("\n").slice(0, 900) + "\n```" }] });
+    }
     return NextResponse.json({ ok: true, ms: Date.now() - started, ...result }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("[cron]", e);
