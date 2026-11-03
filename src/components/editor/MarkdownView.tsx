@@ -51,11 +51,12 @@ interface Props {
 }
 
 export default function MarkdownView({ source, onChange, className = "" }: Props) {
-  const html = useMemo(() => marked.parse(source, { async: false }) as string, [source]);
+  // 글 바로 아래 '---' 도 제목 밑줄이 아니라 구분선으로 (편집기와 같게)
+  const html = useMemo(() => marked.parse(source.replace(/([^\n])\n([ \t]*-{3,}[ \t]*)(?=\n|$)/g, "$1\n\n$2"), { async: false }) as string, [source]);
 
   return (
     <div
-      className={`prose prose-sm prose-neutral max-w-none dark:prose-invert prose-headings:mb-1 prose-headings:mt-3 prose-p:my-1 prose-ul:my-1 prose-li:my-0 [&_li:has(>input)]:list-none [&_li>input]:mr-1 [&_span.red]:text-[#e5484d] [&_.bk]:text-accent [&_.bk]:underline [&_.bk]:underline-offset-2 ${className}`}
+      className={`prose prose-sm prose-neutral max-w-none dark:prose-invert prose-headings:mb-1 prose-headings:mt-3 prose-p:my-1 prose-ul:my-1 prose-li:my-0 [&_li:has(>input)]:list-none [&_li>input]:mr-1 [&_span.red]:text-[#e5484d] [&_.bk]:text-accent [&_.bk]:underline [&_.bk]:underline-offset-2 [&_hr]:my-3 [&_hr]:border-line ${className}`}
       onClick={(e) => {
         const t = e.target as HTMLElement;
         if (t instanceof HTMLInputElement && t.dataset.task !== undefined) {

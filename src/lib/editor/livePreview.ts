@@ -195,6 +195,15 @@ function build(view: EditorView): DecorationSet {
           return false;
         }
 
+        // 글 바로 아래 '---' 는 마크다운에선 제목 밑줄(setext)이지만, 여기선 항상 구분선으로
+        if (/^SetextHeading/.test(name)) {
+          const n = node.node;
+          for (let c = n.firstChild; c; c = c.nextSibling) {
+            if (c.name === "HeaderMark" && /^-{3,}\s*$/.test(doc.sliceString(c.from, c.to)) && !isActive(c.from)) decos.push(hr.range(c.from, c.to));
+          }
+          return;
+        }
+
         // 구분선 ---
         if (name === "HorizontalRule") {
           if (!isActive(node.from)) decos.push(hr.range(node.from, node.to));
@@ -238,17 +247,29 @@ function build(view: EditorView): DecorationSet {
   return Decoration.set(decos, true);
 }
 
-export const livePreviewPlugin: ViewPlugin<{ decorations: DecorationSet; atomic: DecorationSet; update(u: ViewUpdate): void }> = ViewPlugin.fromClass(
+export const livePreviewPlugin: ViewPlugin<{ decorations: DecorationSet; atomic: DecorationSet; dirty: boolean; update(u: ViewUpdate): void }> = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
     /** 숨긴 빨간 글씨 태그 — 커서가 한 번에 건너뜀 */
     atomic: DecorationSet;
+    /** 조합 중에 미뤄 둔 다시 계산 */
+    dirty = false;
     constructor(view: EditorView) {
       this.decorations = build(view);
       this.atomic = Decoration.set(atomicOut, true);
     }
     update(u: ViewUpdate) {
+      // 한글 조합 중에는 서식을 다시 계산하지 않고 위치만 옮김 → 입력이 끊기거나 글자가 튀지 않게
+      if (u.view.composing) {
+        if (u.docChanged) {
+          this.decorations = this.decorations.map(u.changes);
+          this.atomic = this.atomic.map(u.changes);
+        }
+        this.dirty = true;
+        return;
+      }
       if (
+        this.dirty ||
         u.docChanged ||
         u.viewportChanged ||
         u.selectionSet ||
@@ -257,6 +278,7 @@ export const livePreviewPlugin: ViewPlugin<{ decorations: DecorationSet; atomic:
       ) {
         this.decorations = build(u.view);
         this.atomic = Decoration.set(atomicOut, true);
+        this.dirty = false;
       }
     }
   },
@@ -319,10 +341,12 @@ export const livePreviewTheme = EditorView.theme({
     fontSize: "0.9em",
     background: "rgba(127,127,127,0.1)",
   },
+  // --- 구분선: 연하게, 줄 끝까지
   ".cm-lp-hr": {
     display: "inline-block",
     width: "100%",
-    borderTop: "1px solid var(--line)",
+    height: "1px",
+    background: "color-mix(in oklab, var(--color-ink-3) 40%, transparent)",
     verticalAlign: "middle",
   },
 });
