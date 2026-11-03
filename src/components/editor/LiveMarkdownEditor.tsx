@@ -89,6 +89,24 @@ function toggleRed(view: EditorView) {
           range: EditorSelection.range(range.from - RED_OPEN.length, range.to - RED_OPEN.length),
         };
       }
+      // 선택 영역이 한 줄 안의 빨간 글씨 안쪽에 들어 있으면 그 빨간 글씨 전체를 해제
+      const line = state.doc.lineAt(range.from);
+      if (range.to <= line.to) {
+        for (const m of line.text.matchAll(/<span class="red">(.*?)<\/span>/g)) {
+          const s = line.from + m.index!;
+          const open = s + RED_OPEN.length;
+          const close = open + m[1].length;
+          if (range.from >= open && range.to <= close && !(range.from === open && range.to === close && range.empty)) {
+            return {
+              changes: [
+                { from: s, to: open },
+                { from: close, to: close + RED_CLOSE.length },
+              ],
+              range: EditorSelection.range(range.from - RED_OPEN.length, range.to - RED_OPEN.length),
+            };
+          }
+        }
+      }
       // 선택 영역 안이 통째로 빨간 글씨면 해제
       const inner = text.match(/^<span class="red">([\s\S]*)<\/span>$/);
       if (inner && !inner[1].includes(RED_OPEN)) {
@@ -158,7 +176,9 @@ export default function LiveMarkdownEditor({ value, onChange, placeholder, minHe
           keymap.of([
             { key: "Mod-b", run: wrap("**") },
             { key: "Mod-i", run: wrap("*") },
-            { key: "Mod-Shift-r", run: toggleRed },
+            // Ctrl+R: 드래그한 글자를 빨간 글씨로 / 다시 누르면 원래대로 (편집 중엔 새로고침 대신)
+            { key: "Mod-r", run: toggleRed, preventDefault: true },
+            { key: "Mod-Shift-r", run: toggleRed, preventDefault: true },
             indentWithTab,
             ...defaultKeymap,
             ...historyKeymap,
@@ -201,7 +221,7 @@ export default function LiveMarkdownEditor({ value, onChange, placeholder, minHe
           // 버튼을 눌러도 에디터 선택 영역이 풀리지 않게
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => viewRef.current && toggleRed(viewRef.current)}
-          title="빨간 글씨 (Ctrl+Shift+R)"
+          title="빨간 글씨 (Ctrl+R)"
           aria-label="빨간 글씨"
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-line transition-colors hover:border-[#e5484d]"
         >
