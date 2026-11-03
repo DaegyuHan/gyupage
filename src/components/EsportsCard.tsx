@@ -206,6 +206,42 @@ export default function EsportsCard() {
           )}
         </div>
       )}
+
+      {/* 내 링크 */}
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-line-soft pt-4">
+        <a
+          href="https://hanstory33.tistory.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-semibold text-ink-2 transition-colors hover:border-[#eb531f] hover:text-ink"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#eb531f] text-[11px] font-extrabold text-white" aria-hidden>
+            T
+          </span>
+          티스토리 블로그
+        </a>
+        <a
+          href="https://www.instagram.com/dae_gggyuuu/"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-semibold text-ink-2 transition-colors hover:border-[#d6249f] hover:text-ink"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden className="shrink-0">
+            <defs>
+              <linearGradient id="ig-grad" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" stopColor="#fdc468" />
+                <stop offset="0.5" stopColor="#df4996" />
+                <stop offset="1" stopColor="#7a4ff0" />
+              </linearGradient>
+            </defs>
+            <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#ig-grad)" />
+            <rect x="6.5" y="6.5" width="11" height="11" rx="3.5" fill="none" stroke="#fff" strokeWidth="1.8" />
+            <circle cx="12" cy="12" r="2.7" fill="none" stroke="#fff" strokeWidth="1.8" />
+            <circle cx="16.6" cy="7.4" r="1" fill="#fff" />
+          </svg>
+          @dae_gggyuuu
+        </a>
+      </div>
     </section>
   );
 }

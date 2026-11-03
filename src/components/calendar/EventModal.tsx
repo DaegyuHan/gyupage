@@ -276,6 +276,7 @@ export default function EventModal({
               value={memo}
               onChange={setMemo}
               minHeight={category === "devlog" ? 360 : 220}
+              toolbar
               autoFocus={!!editing}
               placeholder="자유롭게 적어요 (## 제목, **굵게** 같은 마크다운도 돼요)"
             />

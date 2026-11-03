@@ -201,6 +201,32 @@ function build(view: EditorView): DecorationSet {
     });
   }
 
+  // 줄 앞 들여쓰기(목차 단계)를 넓게 보이게 + 빨간 글씨 <span class="red">…</span>
+  for (const { from, to } of view.visibleRanges) {
+    for (let pos = from; pos <= to; ) {
+      const line = doc.lineAt(pos);
+      const text = line.text;
+      const lead = /^[ \t]+/.exec(text);
+      if (lead && !/^\s*$/.test(text)) decos.push(Decoration.mark({ class: "cm-lp-indent" }).range(line.from, line.from + lead[0].length));
+      const active = isActive(line.from);
+      for (const m of text.matchAll(/<span class="red">(.*?)<\/span>/g)) {
+        const s = line.from + m.index!;
+        const open = s + '<span class="red">'.length;
+        const close = open + m[1].length;
+        const end = close + "</span>".length;
+        if (m[1]) decos.push(Decoration.mark({ class: "cm-lp-red" }).range(open, close));
+        if (active) {
+          decos.push(Decoration.mark({ class: "cm-lp-mark" }).range(s, open));
+          decos.push(Decoration.mark({ class: "cm-lp-mark" }).range(close, end));
+        } else {
+          decos.push(hide.range(s, open));
+          decos.push(hide.range(close, end));
+        }
+      }
+      pos = line.to + 1;
+    }
+  }
+
   return Decoration.set(decos, true);
 }
 
@@ -257,6 +283,9 @@ export const livePreviewTheme = EditorView.theme({
   },
   ".cm-lp-link": { color: "var(--color-accent)", textDecoration: "underline", textUnderlineOffset: "2px" },
 
+  // 들여쓰기 한 단계(4칸)가 확실히 보이게 칸마다 넓힘
+  ".cm-lp-indent": { letterSpacing: "0.32em" },
+  ".cm-lp-red": { color: "#e5484d" },
   ".cm-lp-bullet": { display: "inline-block", width: "1em", color: "var(--muted)" },
   ".cm-lp-olmark": { color: "var(--muted)" },
   ".cm-lp-checkbox": {

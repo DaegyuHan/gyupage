@@ -3,6 +3,7 @@
 import { CATEGORY_MAP } from "@/lib/categories";
 import { fromKey, inRange, todayKey, WEEKDAYS } from "@/lib/date";
 import type { CalendarEvent } from "@/lib/types";
+import { parsePhase } from "@/lib/projectPhases";
 
 interface Props {
   events: CalendarEvent[];
@@ -15,7 +16,34 @@ interface Props {
 
 const DAY = 86_400_000;
 
-function projectProgress(p: CalendarEvent, today: string) {
+interface ProjectGroup {
+  name: string;
+  start: string;
+  end: string;
+  /** 단계 일정들 (시작 순) — 단계 없는 프로젝트면 하나 */
+  steps: { label?: string; ev: CalendarEvent }[];
+}
+
+/** 같은 이름의 단계 일정(개발·SIT·UAT…)을 프로젝트 하나로 묶음 */
+function groupProjects(events: CalendarEvent[]): ProjectGroup[] {
+  const map = new Map<string, ProjectGroup>();
+  for (const e of events) {
+    if (e.category !== "project") continue;
+    const p = parsePhase(e.title);
+    const name = p?.name ?? e.title;
+    const g = map.get(name) ?? { name, start: e.start, end: e.end, steps: [] };
+    g.start = e.start < g.start ? e.start : g.start;
+    g.end = e.end > g.end ? e.end : g.end;
+    g.steps.push({ label: p?.phase, ev: e });
+    map.set(name, g);
+  }
+  for (const g of map.values()) g.steps.sort((a, b) => a.ev.start.localeCompare(b.ev.start));
+  return [...map.values()];
+}
+
+const md = (k: string) => `${Number(k.slice(5, 7))}.${Number(k.slice(8, 10))}`;
+
+function projectProgress(p: { start: string; end: string }, today: string) {
   const s = fromKey(p.start).getTime();
   const e = fromKey(p.end).getTime();
   const t = fromKey(today).getTime();
@@ -31,8 +59,8 @@ export default function TodayHero({ events, onOpen, loading = false, children }:
   const todays = events
     .filter((e) => inRange(today, e.start, e.end) && e.category !== "project")
     .sort((a, b) => (a.time ?? "99").localeCompare(b.time ?? "99"));
-  const projects = events
-    .filter((e) => e.category === "project" && e.end >= today)
+  const projects = groupProjects(events)
+    .filter((g) => g.end >= today)
     .sort((a, b) => a.end.localeCompare(b.end));
 
   return (
@@ -83,23 +111,41 @@ export default function TodayHero({ events, onOpen, loading = false, children }:
           <p className="text-sm text-ink-3">캘린더에 프로젝트 기간을 넣으면 여기서 남은 날짜를 보여줘요.</p>
         ) : (
           <ul className="space-y-3.5">
-            {projects.slice(0, 3).map((p) => {
-              const { ratio, left, started } = projectProgress(p, today);
+            {projects.slice(0, 3).map((g) => {
+              const { ratio } = projectProgress(g, today);
+              // 지금 단계 = 오늘이 들어 있는 단계, 없으면 다음에 올 단계
+              const cur = g.steps.find((s) => inRange(today, s.ev.start, s.ev.end)) ?? g.steps.find((s) => s.ev.start > today) ?? g.steps[g.steps.length - 1];
+              const next = g.steps.find((s) => s.ev.start > today && s !== cur);
+              const now = inRange(today, cur.ev.start, cur.ev.end);
+              const left = projectProgress(cur.ev, today).left;
+              const until = Math.round((fromKey(cur.ev.start).getTime() - fromKey(today).getTime()) / DAY);
               return (
-                <li key={p.id}>
-                  <button onClick={() => onOpen(p)} className="group block w-full text-left">
+                <li key={g.name}>
+                  <button onClick={() => onOpen(cur.ev)} className="group block w-full text-left">
                     <div className="mb-1.5 flex items-baseline justify-between gap-3">
-                      <span className="truncate font-semibold group-hover:underline">{p.title}</span>
+                      <span className="truncate font-semibold group-hover:underline">{g.name}</span>
                       <span className="numeral shrink-0 text-sm font-semibold text-ink-2">
-                        {!started ? "예정" : left === 0 ? "D-DAY" : `D-${left}`}
+                        {cur.label && (
+                          <span className="mr-1.5 rounded px-1.5 py-0.5 text-[11px] font-bold" style={{ background: CATEGORY_MAP.project.soft, color: CATEGORY_MAP.project.color }}>
+                            {cur.label}
+                          </span>
+                        )}
+                        {now ? (left === 0 ? "D-DAY" : `D-${left}`) : `${until}일 뒤`}
                       </span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${Math.round(ratio * 100)}%`, background: CATEGORY_MAP.project.color }}
-                      />
+                    <div className="relative h-1.5 overflow-hidden rounded-full bg-sunken">
+                      <div className="h-full rounded-full" style={{ width: `${Math.round(ratio * 100)}%`, background: CATEGORY_MAP.project.color }} />
                     </div>
+                    {g.steps.length > 1 && (
+                      <div className="mt-1 flex justify-between gap-2 text-[11px] text-ink-3">
+                        <span className="truncate">{g.steps.map((s) => s.label).filter(Boolean).join(" → ")}</span>
+                        {next && (
+                          <span className="numeral shrink-0">
+                            다음 {next.label} {md(next.ev.start)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </button>
                 </li>
               );

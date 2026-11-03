@@ -103,7 +103,7 @@ export default function GithubCard() {
                     key={d.date}
                     onMouseEnter={() => setHover(d)}
                     onClick={() => setHover(d)}
-                    title={`${formatKorean(d.date)} · ${d.count ? `기여 ${d.count}개` : "기여 없음"}`}
+                    title={`${formatKorean(d.date)} · ${d.count ? `커밋 ${d.count}개` : "커밋 없음"}`}
                     className={`relative flex h-[34px] w-[34px] items-start justify-start rounded-lg p-1 text-[9px] font-semibold leading-none tabular-nums transition hover:scale-110 ${
                       d.level >= 3 ? "text-white/85" : "text-ink-3"
                     } ${d.date === today ? "ring-2 ring-ink-2 ring-offset-2 ring-offset-surface" : ""}`}
@@ -123,7 +123,7 @@ export default function GithubCard() {
                     <b className="text-ink-2">{formatKorean(hover.date)}</b> · {hover.count ? `${hover.count}개` : "없음"}
                   </>
                 ) : (
-                  "날짜 칸을 누르면 기여 수가 보여요"
+                  "날짜 칸을 누르면 커밋 수가 보여요"
                 )}
               </span>
               <span className="flex shrink-0 items-center gap-0.5">
@@ -136,9 +136,9 @@ export default function GithubCard() {
 
           {/* 숫자 */}
           <div className="grid content-center grid-cols-2 gap-x-6 gap-y-6">
-            <Stat value={data.streak} unit="일" label={data.streak ? "🔥 연속 기여 중" : "연속 기록 (오늘 커밋하면 1일째)"} accent={data.streak > 0} />
-            <Stat value={total} unit="개" label="최근 5주 기여" />
-            <Stat value={active} unit={`/${shownDays.length}일`} label="기여한 날" />
+            <Stat value={data.streak} unit="일" label={data.streak ? "🔥 연속 커밋 중" : "연속 기록 (오늘 커밋하면 1일째)"} accent={data.streak > 0} />
+            <Stat value={total} unit="개" label="최근 5주 커밋" />
+            <Stat value={active} unit={`/${shownDays.length}일`} label="커밋한 날" />
             <Stat
               value={best?.count ?? 0}
               unit="개"

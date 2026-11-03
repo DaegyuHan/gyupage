@@ -33,7 +33,7 @@ export default function MarkdownView({ source, onChange, className = "" }: Props
 
   return (
     <div
-      className={`prose prose-sm prose-neutral max-w-none dark:prose-invert prose-headings:mb-1 prose-headings:mt-3 prose-p:my-1 prose-ul:my-1 prose-li:my-0 [&_li:has(>input)]:list-none [&_li>input]:mr-1 ${className}`}
+      className={`prose prose-sm prose-neutral max-w-none dark:prose-invert prose-headings:mb-1 prose-headings:mt-3 prose-p:my-1 prose-ul:my-1 prose-li:my-0 [&_li:has(>input)]:list-none [&_li>input]:mr-1 [&_span.red]:text-[#e5484d] ${className}`}
       onClick={(e) => {
         const t = e.target as HTMLElement;
         if (t instanceof HTMLInputElement && t.dataset.task !== undefined) {
