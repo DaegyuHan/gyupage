@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, useAuth } from "@/lib/auth-client";
-import { STEP_GOAL, type HealthDay } from "@/lib/health";
+import type { HealthDay } from "@/lib/health";
 
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 const kst = (offsetDays = 0) => new Date(Date.now() + 9 * 3600_000 - offsetDays * 86400_000).toISOString().slice(0, 10);
@@ -95,8 +95,7 @@ export default function HealthCard() {
   const latest = [...data.list].reverse().find((d) => d.steps != null || d.sleepMin != null) ?? data.list.at(-1)!;
   const isToday = latest.day === kst();
   const steps = latest.steps ?? 0;
-  const pct = Math.min(100, Math.round((steps / STEP_GOAL) * 100));
-  const max = Math.max(STEP_GOAL * 1.25, ...week.map((d) => d.steps ?? 0));
+  const max = Math.max(1000, ...week.map((d) => d.steps ?? 0)) * 1.1;
   const withSteps = week.filter((d) => d.steps != null);
   const withSleep = week.filter((d) => d.sleepMin != null);
   const avgSteps = withSteps.length ? Math.round(withSteps.reduce((s, d) => s + d.steps!, 0) / withSteps.length) : null;
@@ -117,11 +116,7 @@ export default function HealthCard() {
           </div>
           <div className="mt-1.5 flex items-baseline gap-1.5">
             <span className="numeral text-[34px] font-extrabold leading-none tabular-nums">{latest.steps != null ? steps.toLocaleString("ko-KR") : "–"}</span>
-            <span className="text-xs text-ink-3">걸음 / {STEP_GOAL.toLocaleString("ko-KR")}</span>
-            {pct >= 100 && <span className="ml-auto text-xs font-bold text-[#0e8a6b]">목표 달성 🎉</span>}
-          </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-sunken" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="걸음 목표">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+            <span className="text-xs text-ink-3">걸음</span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <Stat label="수면" value={sleepText(latest.sleepMin)} />
@@ -147,7 +142,6 @@ export default function HealthCard() {
             )}
           </div>
           <div className="relative min-h-[96px] flex-1" onMouseLeave={() => setHover(null)}>
-            <div className="pointer-events-none absolute inset-x-0 border-t border-dashed border-ink-3/50" style={{ bottom: `${(STEP_GOAL / max) * 100}%` }} />
             <div className="absolute inset-0 flex items-end gap-1.5">
               {week.map((d, i) => {
                 const v = d.steps ?? 0;
@@ -164,7 +158,7 @@ export default function HealthCard() {
                   >
                     <span
                       className={`block w-full rounded-t-[4px] transition-colors ${
-                        d.steps == null ? "bg-transparent" : today || hover === i ? "bg-accent" : v >= STEP_GOAL ? "bg-accent/70" : "bg-accent/35"
+                        d.steps == null ? "bg-transparent" : today || hover === i ? "bg-accent" : "bg-accent/45"
                       }`}
                       style={{ height: d.steps == null ? 0 : `${Math.max(4, (v / max) * 100)}%` }}
                     />

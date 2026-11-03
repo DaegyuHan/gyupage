@@ -9,6 +9,3 @@ export interface HealthDay {
   exerciseMin: number | null;
   distanceKm: number | null;
 }
-
-/** 하루 걸음 목표 */
-export const STEP_GOAL = 8000;
