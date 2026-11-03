@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { indentUnit } from "@codemirror/language";
-import { EditorSelection, EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState, Prec, type ChangeSpec } from "@codemirror/state";
 import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/view";
 import { livePreviewPlugin, livePreviewTheme } from "@/lib/editor/livePreview";
 
@@ -16,6 +16,56 @@ interface Props {
   autoFocus?: boolean;
   /** 위쪽에 서식 버튼 (빨간 글씨) */
   toolbar?: boolean;
+}
+
+const INDENT = 4;
+
+/** Shift+Tab: 선택한 줄마다 앞 공백을 4칸(한 단계)씩 뺌 */
+function outdent(view: EditorView) {
+  const { state } = view;
+  const changes: ChangeSpec[] = [];
+  const seen = new Set<number>();
+  for (const r of state.selection.ranges) {
+    for (let n = state.doc.lineAt(r.from).number; n <= state.doc.lineAt(r.to).number; n++) {
+      if (seen.has(n)) continue;
+      seen.add(n);
+      const line = state.doc.line(n);
+      const lead = /^[ \t]*/.exec(line.text)![0];
+      if (!lead) continue;
+      // 탭이면 하나, 공백이면 최대 4칸 (앞 단계 경계에 맞춤)
+      const cut = lead[0] === "\t" ? 1 : lead.length % INDENT || Math.min(INDENT, lead.length);
+      changes.push({ from: line.from, to: line.from + cut });
+    }
+  }
+  if (!changes.length) return true;
+  view.dispatch({ changes, userEvent: "delete.dedent" });
+  return true;
+}
+
+/**
+ * Backspace: 들여쓰기 안이나 목록 기호 바로 뒤에서 누르면 한 단계(4칸)씩 내어씀
+ * 그 밖은 원래 동작 (false 를 돌려서 다음 키맵으로 넘김)
+ */
+function backspaceIndent(view: EditorView) {
+  const { state } = view;
+  const r = state.selection.main;
+  if (!r.empty || state.selection.ranges.length > 1) return false;
+  const line = state.doc.lineAt(r.head);
+  const before = line.text.slice(0, r.head - line.from);
+  // ① 커서 앞이 공백뿐
+  if (/^ +$/.test(before)) {
+    const cut = before.length % INDENT || INDENT;
+    view.dispatch({ changes: { from: r.head - Math.min(cut, before.length), to: r.head }, userEvent: "delete.dedent" });
+    return true;
+  }
+  // ② 들여쓴 목록 기호 바로 뒤 ("    - |", "    - [ ] |", "    1. |") → 기호는 두고 들여쓰기만 한 단계 줄임
+  const m = /^( +)(?:[-*+]|\d+[.)]) (?:\[[ xX]\] )?$/.exec(before);
+  if (m) {
+    const cut = m[1].length % INDENT || Math.min(INDENT, m[1].length);
+    view.dispatch({ changes: { from: line.from, to: line.from + cut }, userEvent: "delete.dedent" });
+    return true;
+  }
+  return false;
 }
 
 const RED_OPEN = '<span class="red">';
@@ -99,6 +149,8 @@ export default function LiveMarkdownEditor({ value, onChange, placeholder, minHe
         doc: value,
         extensions: [
           history(),
+          // 마크다운 기본 Backspace 보다 먼저: 들여쓰기는 4칸씩 지움
+          Prec.highest(keymap.of([{ key: "Backspace", run: backspaceIndent }, { key: "Shift-Tab", run: outdent }])),
           markdown({ base: markdownLanguage }),
           // Tab 들여쓰기를 4칸으로 (2칸은 목차 단계가 잘 안 보였음)
           indentUnit.of("    "),
@@ -149,12 +201,11 @@ export default function LiveMarkdownEditor({ value, onChange, placeholder, minHe
           // 버튼을 눌러도 에디터 선택 영역이 풀리지 않게
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => viewRef.current && toggleRed(viewRef.current)}
-          title="빨간 글씨 (드래그한 뒤 누르기 · Ctrl+Shift+R)"
+          title="빨간 글씨 (Ctrl+Shift+R)"
           aria-label="빨간 글씨"
-          className="flex h-8 items-center gap-1.5 rounded-lg border border-line px-2.5 text-xs font-semibold text-ink-2 transition-colors hover:border-[#e5484d] hover:text-ink"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-line transition-colors hover:border-[#e5484d]"
         >
           <span className="text-base font-extrabold leading-none text-[#e5484d] underline decoration-[#e5484d] decoration-2 underline-offset-2">A</span>
-          빨간 글씨
         </button>
       </div>
       {editor}

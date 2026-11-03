@@ -48,4 +48,13 @@ export interface ProjectSave {
   /** 수정 전 이름 (이름을 바꾼 경우 예전 단계 일정도 같이 바꿈) */
   original?: string;
   plan: PhasePlan;
+  /** 모든 단계가 같이 쓰는 메모 */
+  memo?: string;
+}
+
+/** 단계 일정들이 같이 쓰는 메모 (가장 최근에 고친 단계 기준) */
+export function sharedMemo(events: CalendarEvent[], name: string) {
+  const list = [...phaseEvents(events, name).values()].filter((e) => e.memo?.trim());
+  list.sort((a, b) => b.updatedAt - a.updatedAt);
+  return list[0]?.memo ?? "";
 }

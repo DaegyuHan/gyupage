@@ -46,6 +46,7 @@ const utcStamp = (ms: number) => new Date(ms).toISOString().replace(/[-:]/g, "")
 /** 마크다운 메모를 캘린더 메모용 평문으로 */
 function plain(md: string) {
   return md
+    .replace(/<\/?span[^>]*>/g, "")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/^\s*-\s\[[ xX]\]\s*/gm, "• ")
     .replace(/\*\*(.+?)\*\*/g, "$1")

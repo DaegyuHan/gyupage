@@ -25,10 +25,7 @@ export default function ProjectPhases({ plan, defaultDate, onChange }: Props) {
   };
   return (
     <div className="mt-5">
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-sm font-bold">단계별 일정</h3>
-        <span className="text-[11px] text-ink-3">정한 단계만 캘린더에 &lsquo;이름 + 단계&rsquo;로 나와요</span>
-      </div>
+      <h3 className="mb-2 text-sm font-bold">단계별 일정</h3>
       <ul className="divide-y divide-line-soft rounded-xl border border-line-soft">
         {PHASES.map((p, i) => {
           const r = plan[p];

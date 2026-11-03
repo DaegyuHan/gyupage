@@ -43,7 +43,7 @@ export function useEventEditor(store: Store) {
    * - 기간을 정한 단계: 있으면 고치고(메모·시간은 그대로), 없으면 새로 만듦
    * - 미정 단계: 있던 일정은 지움
    */
-  const saveProject = ({ name, original, plan }: ProjectSave) => {
+  const saveProject = ({ name, original, plan, memo }: ProjectSave) => {
     const existing = phaseEvents(store.events, original ?? name);
     for (const p of PHASES) {
       const r = plan[p];
@@ -54,9 +54,9 @@ export function useEventEditor(store: Store) {
       }
       if (ev) {
         const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = ev;
-        store.update(ev.id, { ...rest, title: phaseTitle(name, p), start: r.start, end: r.end });
+        store.update(ev.id, { ...rest, title: phaseTitle(name, p), start: r.start, end: r.end, memo: memo || undefined });
       } else {
-        store.add({ title: phaseTitle(name, p), category: "project", start: r.start, end: r.end });
+        store.add({ title: phaseTitle(name, p), category: "project", start: r.start, end: r.end, memo: memo || undefined });
       }
     }
     setOpen(false);

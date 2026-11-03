@@ -79,6 +79,9 @@ function activeLines(state: EditorState): Set<number> {
   return lines;
 }
 
+/** build 가 채우는 커서 건너뛸 구간 (바로 위 플러그인이 가져감) */
+let atomicOut: Range<Decoration>[] = [];
+
 function build(view: EditorView): DecorationSet {
   const { state } = view;
   const doc = state.doc;
@@ -201,7 +204,8 @@ function build(view: EditorView): DecorationSet {
     });
   }
 
-  // 줄 앞 들여쓰기(목차 단계)를 넓게 보이게 + 빨간 글씨 <span class="red">…</span>
+  // 줄 앞 들여쓰기(목차 단계)를 넓게 보이게 + 빨간 글씨 <span class="red">…</span> + 줄 앞 '[' 강조
+  atomicOut = [];
   for (const { from, to } of view.visibleRanges) {
     for (let pos = from; pos <= to; ) {
       const line = doc.lineAt(pos);
@@ -209,19 +213,23 @@ function build(view: EditorView): DecorationSet {
       const lead = /^[ \t]+/.exec(text);
       if (lead && !/^\s*$/.test(text)) decos.push(Decoration.mark({ class: "cm-lp-indent" }).range(line.from, line.from + lead[0].length));
       const active = isActive(line.from);
+      // 빨간 글씨: 태그는 항상 숨기고 (커서도 태그를 건너뜀) 글자만 빨갛게
       for (const m of text.matchAll(/<span class="red">(.*?)<\/span>/g)) {
         const s = line.from + m.index!;
         const open = s + '<span class="red">'.length;
         const close = open + m[1].length;
         const end = close + "</span>".length;
         if (m[1]) decos.push(Decoration.mark({ class: "cm-lp-red" }).range(open, close));
-        if (active) {
-          decos.push(Decoration.mark({ class: "cm-lp-mark" }).range(s, open));
-          decos.push(Decoration.mark({ class: "cm-lp-mark" }).range(close, end));
-        } else {
-          decos.push(hide.range(s, open));
-          decos.push(hide.range(close, end));
-        }
+        decos.push(hide.range(s, open), hide.range(close, end));
+        atomicOut.push(hide.range(s, open), hide.range(close, end));
+      }
+      // 줄 맨 앞(들여쓰기·목록 기호 뒤)에 '[' 만 있고 닫는 ']' 가 없으면 [ ] 로 감싼 것처럼 줄 끝까지 강조
+      const bm = /^(\s*(?:(?:[-*+]|\d+[.)])\s+)?)\[(?![ xX]\])([^\]]+)$/.exec(text);
+      if (bm && bm[2].trim()) {
+        const b = line.from + bm[1].length;
+        decos.push(Decoration.mark({ class: "cm-lp-link" }).range(b, line.to));
+        if (!active) decos.push(hide.range(b, b + 1));
+        else decos.push(Decoration.mark({ class: "cm-lp-mark" }).range(b, b + 1));
       }
       pos = line.to + 1;
     }
@@ -230,11 +238,14 @@ function build(view: EditorView): DecorationSet {
   return Decoration.set(decos, true);
 }
 
-export const livePreviewPlugin = ViewPlugin.fromClass(
+export const livePreviewPlugin: ViewPlugin<{ decorations: DecorationSet; atomic: DecorationSet; update(u: ViewUpdate): void }> = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    /** 숨긴 빨간 글씨 태그 — 커서가 한 번에 건너뜀 */
+    atomic: DecorationSet;
     constructor(view: EditorView) {
       this.decorations = build(view);
+      this.atomic = Decoration.set(atomicOut, true);
     }
     update(u: ViewUpdate) {
       if (
@@ -245,10 +256,14 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
         syntaxTree(u.startState) !== syntaxTree(u.state)
       ) {
         this.decorations = build(u.view);
+        this.atomic = Decoration.set(atomicOut, true);
       }
     }
   },
-  { decorations: (v) => v.decorations },
+  {
+    decorations: (v) => v.decorations,
+    provide: (plugin) => EditorView.atomicRanges.of((view) => view.plugin(plugin)?.atomic ?? Decoration.none),
+  },
 );
 
 export const livePreviewTheme = EditorView.theme({

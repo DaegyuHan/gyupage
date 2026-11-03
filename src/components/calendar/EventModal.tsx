@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import LiveMarkdownEditor from "@/components/editor/LiveMarkdownEditor";
 import { DateRangeField, TimeField } from "./pickers";
 import ProjectPhases from "./ProjectPhases";
-import { emptyPlan, parsePhase, planOf, type PhasePlan, type ProjectSave } from "@/lib/projectPhases";
+import { emptyPlan, parsePhase, planOf, sharedMemo, type PhasePlan, type ProjectSave } from "@/lib/projectPhases";
 import { CATEGORIES, CATEGORY_MAP } from "@/lib/categories";
 import type { EventInput } from "@/lib/eventStore";
 import type { CalendarEvent, CategoryId } from "@/lib/types";
@@ -79,7 +79,8 @@ export default function EventModal({
     setEnd(editing?.end ?? defaultDate);
     setTime(editing?.time ?? "");
     setDone(!!editing?.done);
-    const m = editing?.memo ?? (!editing && defaultCategory === "devlog" ? DEVLOG_TEMPLATE : "");
+    // 단계별 프로젝트는 메모를 모든 단계가 같이 씀
+    const m = parsed ? sharedMemo(projectEvents, parsed.name) : (editing?.memo ?? (!editing && defaultCategory === "devlog" ? DEVLOG_TEMPLATE : ""));
     setMemo(m);
     setConfirmDelete(false);
     initial.current = JSON.stringify([parsed ? parsed.name : (editing?.title ?? ""), editing?.category ?? defaultCategory, editing?.start ?? defaultDate, editing?.end ?? defaultDate, editing?.time ?? "", m, !!editing?.done, pm, pl]);
@@ -108,7 +109,7 @@ export default function EventModal({
   const savePlan = () => {
     const name = title.trim();
     if (!name || !onSaveProject) return false;
-    onSaveProject({ name, original: originalName, plan });
+    onSaveProject({ name, original: originalName, plan, memo: memo.trimEnd() });
     return true;
   };
 
@@ -226,25 +227,18 @@ export default function EventModal({
                 <input type="checkbox" checked={done} onChange={(e) => setDone(e.target.checked)} className="h-[18px] w-[18px] accent-[var(--cat-todo)]" />
                 다 했어요
               </label>
-              <p className="mt-6 rounded-xl bg-sunken/60 px-4 py-3 text-xs leading-relaxed text-ink-2">
-                할일은 홈의 &lsquo;오늘 할 일&rsquo;과 같은 목록이에요. 여기서 추가하면 그날 홈에도 나오고, 홈에서 적은 할 일도 여기에 보여요.
-              </p>
             </>
           ) : isPlan ? (
             <>
               <ProjectPhases plan={plan} defaultDate={defaultDate} onChange={setPlan} />
-              <p className="mt-4 rounded-xl bg-sunken/60 px-4 py-3 text-xs leading-relaxed text-ink-2">
-                캘린더에는 단계마다 &lsquo;{title.trim() || "프로젝트 이름"} SIT&rsquo;처럼 따로 나와요. 미정인 단계는 날짜를 정하면 그때 생겨요.
-              </p>
-              {editing ? (
-                <button type="button" onClick={() => setPlanMode(false)} className="mt-3 text-xs font-semibold text-ink-3 underline-offset-2 hover:text-ink hover:underline">
-                  이 일정만 따로 수정 (메모·시간)
-                </button>
-              ) : (
+              {!editing && (
                 <button type="button" onClick={() => setPlanMode(false)} className="mt-3 text-xs font-semibold text-ink-3 underline-offset-2 hover:text-ink hover:underline">
                   단계 없이 기간 하나로 만들기
                 </button>
               )}
+              <div className="mt-5 border-t-2 pt-3" style={{ borderColor: c.soft }}>
+                <LiveMarkdownEditor value={memo} onChange={setMemo} minHeight={220} placeholder="메모" toolbar />
+              </div>
             </>
           ) : (
             <>
@@ -278,7 +272,7 @@ export default function EventModal({
               minHeight={category === "devlog" ? 360 : 220}
               toolbar
               autoFocus={!!editing}
-              placeholder="자유롭게 적어요 (## 제목, **굵게** 같은 마크다운도 돼요)"
+              placeholder="메모"
             />
           </div>
             </>
