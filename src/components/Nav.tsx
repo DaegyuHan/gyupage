@@ -13,6 +13,10 @@ const MENUS = [
   { href: "/history", label: "히스토리", icon: "M10 3.5a6.5 6.5 0 1 1-6.1 4.3M3.5 4v4h4M10 6.5V10l2.5 2" },
 ];
 
+/** 휴대폰 아래 탭 순서: 홈을 가운데로 (축구 · 캘린더 · 홈 · 독서 · 히스토리) */
+const BOTTOM_ORDER = ["/football", "/calendar", "/", "/reading", "/history"];
+const BOTTOM_MENUS = BOTTOM_ORDER.map((h) => MENUS.find((m) => m.href === h)!);
+
 const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
 /** 휴대폰: 화면 아래 탭 바 (아이폰 홈 바 영역만큼 띄움) */
@@ -24,7 +28,7 @@ function BottomTabs({ pathname }: { pathname: string }) {
       aria-label="메뉴"
     >
       <ul className="mx-auto grid max-w-md grid-cols-5">
-        {MENUS.map((m) => {
+        {BOTTOM_MENUS.map((m) => {
           const active = isActive(pathname, m.href);
           return (
             <li key={m.href}>
