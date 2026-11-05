@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { guarded } from "@/lib/server/api";
-import { checkHealthToken, parseHealth, recentHealth, saveHealth } from "@/lib/server/health";
+import { checkHealthToken, deleteHealth, parseHealth, recentHealth, replaceHealth, saveHealth } from "@/lib/server/health";
 
 /**
  * POST: 아이폰 단축어가 오늘 건강 기록을 보냄 (Authorization: Bearer <토큰>)
@@ -40,5 +40,28 @@ export async function GET(req: Request) {
   return guarded(async () => {
     const days = Math.min(31, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 7));
     return NextResponse.json(await recentHealth(days), { headers: { "Cache-Control": "no-store" } });
+  });
+}
+
+const isDay = (s: unknown): s is string => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+/** PUT: 설정에서 하루 기록 직접 고치기 (로그인 필요) { day, steps, sleepMinutes, activeKcal, exerciseMinutes } */
+export async function PUT(req: Request) {
+  return guarded(async () => {
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!isDay(body.day)) return NextResponse.json({ error: "날짜가 이상해요" }, { status: 400 });
+    const h = parseHealth(body);
+    await replaceHealth(h);
+    return NextResponse.json({ ok: true, saved: h });
+  });
+}
+
+/** DELETE ?day=YYYY-MM-DD: 하루 기록 지우기 (로그인 필요) */
+export async function DELETE(req: Request) {
+  return guarded(async () => {
+    const day = new URL(req.url).searchParams.get("day");
+    if (!isDay(day)) return NextResponse.json({ error: "날짜가 이상해요" }, { status: 400 });
+    await deleteHealth(day);
+    return NextResponse.json({ ok: true });
   });
 }

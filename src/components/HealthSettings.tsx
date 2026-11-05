@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/auth-client";
 import type { HealthDay } from "@/lib/health";
+import HealthEditor from "./HealthEditor";
 
 function Copy({ label, value }: { label: string; value: string }) {
   const [done, setDone] = useState(false);
@@ -120,6 +121,7 @@ export default function HealthSettings() {
           ))}
         </ol>
       </div>
+      <HealthEditor />
     </section>
   );
 }

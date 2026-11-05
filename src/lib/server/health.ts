@@ -102,6 +102,20 @@ export async function saveHealth(h: HealthDay) {
       updated_at = EXCLUDED.updated_at`;
 }
 
+/** 설정에서 직접 고침: 그날 기록을 통째로 이 값으로 (빈 칸은 지움) */
+export async function replaceHealth(h: HealthDay) {
+  const sql = await db();
+  await sql`INSERT INTO health_daily (day, steps, sleep_min, active_kcal, exercise_min, distance_km, updated_at)
+    VALUES (${h.day}, ${h.steps}, ${h.sleepMin}, ${h.activeKcal}, ${h.exerciseMin}, ${h.distanceKm}, ${Date.now()})
+    ON CONFLICT (day) DO UPDATE SET steps = EXCLUDED.steps, sleep_min = EXCLUDED.sleep_min, active_kcal = EXCLUDED.active_kcal,
+      exercise_min = EXCLUDED.exercise_min, distance_km = EXCLUDED.distance_km, updated_at = EXCLUDED.updated_at`;
+}
+
+export async function deleteHealth(day: string) {
+  const sql = await db();
+  await sql`DELETE FROM health_daily WHERE day = ${day}`;
+}
+
 export async function recentHealth(days: number): Promise<{ list: HealthDay[]; updatedAt: number | null }> {
   const sql = await db();
   const from = new Date(Date.now() + 9 * 3600_000 - (days - 1) * 86400_000).toISOString().slice(0, 10);
