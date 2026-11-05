@@ -218,7 +218,7 @@ export default function EsportsCard() {
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#eb531f] text-[11px] font-extrabold text-white" aria-hidden>
             T
           </span>
-          티스토리 블로그
+          HAN STORY
         </a>
         <a
           href="https://www.instagram.com/dae_gggyuuu/"
