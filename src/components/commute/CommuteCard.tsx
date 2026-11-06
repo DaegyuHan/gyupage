@@ -242,7 +242,7 @@ export default function CommuteCard() {
                 <p className="py-3 text-sm text-ink-3">도착 정보가 없어요</p>
               ) : (
                 <ul className="mt-2 divide-y divide-line-soft">
-                  {data.subway.trains.slice(0, 3).map((t, i) => (
+                  {data.subway.trains.slice(0, 2).map((t, i) => (
                     <li key={i} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <span

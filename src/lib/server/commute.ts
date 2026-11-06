@@ -139,6 +139,86 @@ export async function searchStations(q: string) {
   }));
 }
 
+/* ───────── 신분당선 열차 위치로 다음·다다음 열차 계산 ─────────
+ * 도착정보 API 는 방향별로 1~2대만 줘서, 노선 전체 열차 위치(realtimePosition)를 받아
+ * 역 사이 걸리는 시간으로 우리 역까지 남은 시간을 대략 계산함
+ */
+const SBD_STATIONS = ["신사", "논현", "신논현", "강남", "양재", "양재시민의숲", "청계산입구", "판교", "정자", "미금", "동천", "수지구청", "성복", "상현", "광교중앙", "광교"];
+/** i 번째 역 → i+1 번째 역 (분, 정차 포함) */
+const SBD_GAP = [2, 1.5, 2, 2.5, 2, 3, 6.5, 3, 2.5, 2.5, 2, 2, 2, 2.5, 2];
+/** 종점에서 돌아 나가는 데 걸리는 시간(초) */
+const TURN = 300;
+
+interface RawPos {
+  statnNm: string;
+  updnLine: string; // 0 상행(신사 방면) 1 하행(광교 방면)
+  trainSttus: string; // 0 진입 1 도착 2 출발 3 전역출발
+  statnTnm: string;
+  trainNo: string;
+}
+
+const sbdPositions = cached("commute-sbd-pos-v1", 20, async (): Promise<RawPos[]> => {
+  const k = key("SEOUL_SUBWAY_KEY");
+  if (!k) throw new Error("SEOUL_SUBWAY_KEY 가 없어요");
+  const res = await mfetch(`http://swopenapi.seoul.go.kr/api/subway/${encodeURIComponent(k)}/json/realtimePosition/0/100/${encodeURIComponent("신분당선")}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error(`지하철 위치 API ${res.status}`);
+  const j = (await res.json()) as { realtimePositionList?: RawPos[] };
+  return list(j.realtimePositionList);
+});
+
+/** a 역에서 b 역까지 걸리는 초 */
+function travel(a: number, b: number) {
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  return SBD_GAP.slice(lo, hi).reduce((s, m) => s + m, 0) * 60;
+}
+/** 열차 상태 보정 (진입 중이면 그 역 전, 출발했으면 조금 지나감) */
+const statusAdj = (st: string) => (st === "0" ? 30 : st === "1" ? 20 : st === "2" ? -20 : 0);
+const STATUS_WORD: Record<string, string> = { "0": "진입", "1": "도착", "2": "출발", "3": "전역 출발" };
+
+function trainsFromPositions(pos: RawPos[], station: string, dir: "상행" | "하행"): CommuteTrain[] {
+  const target = SBD_STATIONS.indexOf(station);
+  if (target < 0) return [];
+  const last = SBD_STATIONS.length - 1;
+  // 우리 방향 종점 반대편 끝 (하행이면 신사에서 돌아오고, 상행이면 광교에서 돌아옴)
+  const turnAt = dir === "하행" ? 0 : last;
+  const out: CommuteTrain[] = [];
+  for (const t of pos) {
+    const at = SBD_STATIONS.indexOf(t.statnNm);
+    if (at < 0) continue;
+    const down = t.updnLine === "1";
+    const sameDir = (dir === "하행") === down;
+    let sec: number | null = null;
+    let turned = false;
+    if (sameDir) {
+      // 우리 역으로 오는 중 (하행은 신사 쪽, 상행은 광교 쪽에 있어야 함)
+      const coming = dir === "하행" ? at <= target : at >= target;
+      if (!coming || (at === target && t.trainSttus === "2")) continue;
+      sec = travel(at, target) + (at === target ? 0 : statusAdj(t.trainSttus));
+      // 광교에서 출발하는 상행: 광교에 서 있으면 곧 출발
+      if (at === target && target === last) sec = 60;
+    } else if (t.statnTnm === SBD_STATIONS[turnAt]) {
+      // 반대 방향 열차가 끝까지 갔다가 돌아오는 경우
+      sec = travel(at, turnAt) + statusAdj(t.trainSttus) + TURN + travel(turnAt, target);
+      turned = true;
+    }
+    if (sec == null) continue;
+    out.push({
+      to: turned ? (dir === "하행" ? "광교" : "신사") : t.statnTnm,
+      sec: Math.max(0, Math.round(sec)),
+      msg: `지금 ${t.statnNm} ${STATUS_WORD[t.trainSttus] ?? ""}`.trim(),
+      where: t.statnNm,
+      last: false,
+    });
+  }
+  out.sort((a, b) => (a.sec ?? 0) - (b.sec ?? 0));
+  // 회차 열차는 실제 간격보다 몰려 보일 수 있어서 최소 3분 간격
+  for (let i = 1; i < out.length; i++) out[i].sec = Math.max(out[i].sec!, out[i - 1].sec! + 180);
+  return out.slice(0, 4);
+}
+
 export async function getCommute(k: CommuteKey): Promise<CommuteData> {
   const c = { ...COMMUTE[k], stop: (await getCommuteStops())[k] };
   const [bus, subway] = await Promise.all([
@@ -148,7 +228,11 @@ export async function getCommute(k: CommuteKey): Promise<CommuteData> {
         others: all.filter((b) => !c.stop.routes.includes(b.route) && b.next.length).sort((a, b) => a.next[0].sec - b.next[0].sec),
       }))
       .catch((e) => ({ buses: [] as CommuteBus[], others: [] as CommuteBus[], error: String((e as Error).message ?? e) })),
-    subwayArrivals(c.subway.station, c.subway.dir)
+    // 열차 위치로 다음·다다음 열차까지 계산, 안 되면 도착정보 API
+    sbdPositions()
+      .then((pos) => trainsFromPositions(pos, c.subway.station, c.subway.dir))
+      .then((t) => (t.length ? t : Promise.reject(new Error("위치 정보 없음"))))
+      .catch(() => subwayArrivals(c.subway.station, c.subway.dir))
       .then((trains) => ({ trains }))
       .catch((e) => ({ trains: [] as CommuteTrain[], error: String((e as Error).message ?? e) })),
   ]);
