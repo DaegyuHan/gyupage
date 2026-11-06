@@ -22,6 +22,8 @@ import HourlyWeather from "@/components/weather/HourlyWeather";
 import WeatherNow from "@/components/weather/WeatherNow";
 import { useWeather } from "@/components/weather/useWeather";
 import HealthCard from "./HealthCard";
+import CommuteCard from "@/components/commute/CommuteCard";
+import { isTopTime } from "@/lib/commute";
 import TodayTodos from "./TodayTodos";
 import WeekBoard from "./WeekBoard";
 import { useHomeMatches } from "./useHomeMatches";
@@ -50,6 +52,12 @@ export default function HomeView() {
     on();
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
+  }, []);
+  // 출퇴근 위젯: 출근(07:00~08:30)·퇴근(18:00~19:00) 시간엔 맨 위, 그 밖엔 맨 아래 (1분마다 확인)
+  const [commuteTop, setCommuteTop] = useState(() => isTopTime());
+  useEffect(() => {
+    const t = setInterval(() => setCommuteTop(isTopTime()), 60_000);
+    return () => clearInterval(t);
   }, []);
   if (!mounted) return <div className="h-[70vh]" aria-busy="true" />;
 
@@ -132,6 +140,7 @@ export default function HomeView() {
       {wide ? (
         <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-12">
+            {commuteTop && <CommuteCard />}
             {week}
             {hourly}
             {news}
@@ -151,6 +160,7 @@ export default function HomeView() {
       ) : (
         // 휴대폰·좁은 화면: 일정 → 날씨 → My Team → 축구 → 독서 → 소식 → CS → 나머지
         <div className="mt-8 min-w-0 space-y-12">
+          {commuteTop && <CommuteCard />}
           {week}
           {hourly}
           <MyTeamCard />
@@ -163,6 +173,12 @@ export default function HomeView() {
           {health}
           {f1}
           {esports}
+          {!commuteTop && <CommuteCard />}
+        </div>
+      )}
+      {wide && !commuteTop && (
+        <div className="mt-12">
+          <CommuteCard />
         </div>
       )}
 

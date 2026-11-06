@@ -24,7 +24,8 @@ export const SOURCES: Record<string, { label: string; hint?: string }> = {
   riot: { label: "Riot (LoL)", hint: "개발용 키는 24시간마다 만료" },
   steam: { label: "Steam", hint: "하루 100,000회" },
   lolesports: { label: "LoL e스포츠" },
-  "data-go-kr": { label: "공공데이터 (공휴일)" },
+  "data-go-kr": { label: "공공데이터 (공휴일·버스)", hint: "경기 버스 개발계정 API 마다 하루 1,000회" },
+  "seoul-subway": { label: "서울 지하철 실시간" },
   claude: { label: "Claude API" },
   push: { label: "웹 푸시" },
 };
@@ -44,6 +45,7 @@ const HOSTS: [RegExp, string][] = [
   [/steampowered\.com$/, "steam"],
   [/lolesports\.com$/, "lolesports"],
   [/data\.go\.kr$/, "data-go-kr"],
+  [/seoul\.go\.kr$/, "seoul-subway"],
   [/anthropic\.com$/, "claude"],
 ];
 

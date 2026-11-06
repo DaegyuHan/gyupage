@@ -1,6 +1,7 @@
 import BookSettings from "@/components/books/BookSettings";
 import CalendarFeedSettings from "@/components/CalendarFeedSettings";
 import HealthSettings from "@/components/HealthSettings";
+import CommuteSettings from "@/components/commute/CommuteSettings";
 import RequireLogin from "@/components/RequireLogin";
 import WidgetSettings from "@/components/WidgetSettings";
 import HistoryUpload from "@/components/HistoryUpload";
@@ -24,6 +25,7 @@ export default function SettingsPage() {
           <WidgetSettings />
           <CalendarFeedSettings />
           <HealthSettings />
+          <CommuteSettings />
           <MonitorSettings />
           <AiUsageSettings />
         </div>
